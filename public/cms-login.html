@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#10162e" />
+    <title>CMS Admin Login</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>CMS Admin Login</h1>
+      <p class="subtext">Login to manage restaurant onboarding content.</p>
+
+      <form id="cms-login-form" novalidate>
+        <label for="email">Admin Email</label>
+        <input id="email" type="email" required />
+        <label for="password">Password</label>
+        <input id="password" type="password" required />
+        <button type="submit">Login to CMS</button>
+      </form>
+      <p id="status" role="status" aria-live="polite"></p>
+    </main>
+
+    <script src="./atmosphere.js"></script>
+    <script src="./pwa.js"></script>
+    <script src="./cms-login.js"></script>
+  </body>
+</html>

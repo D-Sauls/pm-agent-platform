@@ -1,0 +1,24 @@
+{
+  "name": "Restaurant Staff Onboarding",
+  "short_name": "Staff Onboard",
+  "description": "Training and onboarding app for restaurant staff.",
+  "start_url": "/signup.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#090c1b",
+  "theme_color": "#10162e",
+  "icons": [
+    {
+      "src": "/icons/icon-any.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
