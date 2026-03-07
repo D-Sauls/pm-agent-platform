@@ -11,6 +11,7 @@ import {
 } from "../core/container.js";
 import { AppError } from "../core/errors/AppError.js";
 import type { NormalizedProjectContext } from "../core/models/projectModels.js";
+import { ChangeAssessmentWorkflow } from "../core/services/workflows/changeAssessmentWorkflow.js";
 import { RaidExtractionWorkflow } from "../core/services/workflows/raidExtractionWorkflow.js";
 import { authContextMiddleware } from "../core/middleware/AuthContextMiddleware.js";
 import { licenseValidationMiddleware } from "../core/middleware/LicenseValidationMiddleware.js";
@@ -34,11 +35,20 @@ const raidExtractionRequestSchema = z.object({
   sourceType: z.enum(["meeting_notes", "status_notes", "workshop_notes", "generic"]).optional(),
   metadata: z.record(z.unknown()).optional()
 });
+const changeAssessmentRequestSchema = z.object({
+  tenantId: z.string().min(1),
+  projectId: z.string().optional(),
+  changeText: z.string().min(1),
+  sourceType: z.enum(["client_request", "internal_request", "governance_request", "generic"]).optional(),
+  requestedBy: z.string().nullable().optional(),
+  metadata: z.record(z.unknown()).optional()
+});
 
 export const productRoutes = Router();
 const resolveTenant = tenantResolutionMiddleware(tenantContextServiceV2);
 const validateLicense = licenseValidationMiddleware(licenseServiceV2);
 const raidWorkflow = new RaidExtractionWorkflow(new PromptEngine());
+const changeWorkflow = new ChangeAssessmentWorkflow(new PromptEngine());
 
 productRoutes.use(authContextMiddleware);
 productRoutes.use(requestLoggingMiddleware(usageLogServiceV2));
@@ -134,6 +144,67 @@ productRoutes.post("/workflows/raid-extraction", resolveTenant, validateLicense,
       requestType: "workflow_execute",
       workflowType: "raid_extraction",
       workflowId: "raid_extraction",
+      confidenceScore: response.confidenceScore,
+      connectorUsed: projectContext.project.sourceSystem,
+      executionTimeMs: Date.now() - executionStart
+    };
+
+    res.json(response.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.post("/workflows/change-assessment", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsedRequest = changeAssessmentRequestSchema.safeParse(req.body);
+    if (!parsedRequest.success) {
+      throw new AppError("VALIDATION_ERROR", "Invalid change assessment request payload", 400, {
+        issues: parsedRequest.error.issues
+      });
+    }
+    const parsed = parsedRequest.data;
+    const tenantContext = req.tenantContext;
+    if (!tenantContext) {
+      throw new AppError("TENANT_NOT_FOUND", "Tenant context missing", 400);
+    }
+
+    const projectContext: NormalizedProjectContext = parsed.projectId
+      ? await projectContextServiceV2.getProjectContext(tenantContext, parsed.projectId)
+      : {
+          project: {
+            projectId: "change-only",
+            tenantId: tenantContext.tenant.tenantId,
+            sourceSystem: "notes",
+            name: "Change Request Context",
+            deliveryMode: "hybrid"
+          },
+          tasks: [],
+          milestones: [],
+          risks: [],
+          issues: [],
+          dependencies: [],
+          statusSummary: "Amber"
+        };
+
+    const executionStart = Date.now();
+    const response = await changeWorkflow.execute({
+      tenantContext,
+      projectContext,
+      userRequest: parsed.changeText,
+      workflowId: "change_assessment",
+      timestamp: new Date(),
+      metadata: {
+        sourceType: parsed.sourceType ?? "generic",
+        requestedBy: parsed.requestedBy ?? null,
+        ...(parsed.metadata ?? {})
+      }
+    });
+
+    req.requestMetadata = {
+      requestType: "workflow_execute",
+      workflowType: "change_assessment",
+      workflowId: "change_assessment",
       confidenceScore: response.confidenceScore,
       connectorUsed: projectContext.project.sourceSystem,
       executionTimeMs: Date.now() - executionStart

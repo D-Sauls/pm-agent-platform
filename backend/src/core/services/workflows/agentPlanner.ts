@@ -36,7 +36,19 @@ export class AgentPlanner {
         rationale: "Detected RAID extraction keywords"
       };
     }
-    if (this.hasAny(text, ["change request", "assess change", "impact"])) {
+    if (
+      this.hasAny(text, [
+        "assess this change request",
+        "is this in scope",
+        "what impact will this change have",
+        "evaluate this scope change",
+        "does this require change control",
+        "change request",
+        "assess change",
+        "scope change",
+        "impact"
+      ])
+    ) {
       return {
         workflowId: "change_assessment",
         confidenceScore: 0.9,

@@ -86,6 +86,31 @@ export class OpenAiLlmClient implements LlmClient {
         warnings: []
       });
     }
+    if (prompt.includes("Template: change_assessment")) {
+      const waterfall = prompt.includes("Delivery Mode: Waterfall");
+      const agile = prompt.includes("Delivery Mode: AgileLean");
+      return JSON.stringify({
+        changeSummary: "Requested change adds capability beyond current baseline scope.",
+        impactAssessment: {
+          scopeClassification: "requires_review",
+          scheduleImpact: "medium",
+          effortImpact: "medium",
+          costImpact: "medium",
+          deliveryRisk: "medium",
+          dependencyImpact: ["Requires API team availability for integration changes."],
+          governanceImpact: waterfall
+            ? ["Formal change control board approval required."]
+            : agile
+              ? ["Backlog reprioritization and iteration trade-off decision required."]
+              : ["Governance board review plus iterative implementation plan required."],
+          assumptionsMade: ["No additional budget has been approved yet."],
+          decisionRequired: "Approve change request and rebaseline timeline?",
+          recommendedNextStep: "Run impact review with delivery and governance stakeholders.",
+          confidence: 0.8
+        },
+        warnings: []
+      });
+    }
 
     return "Stub LLM response";
   }
