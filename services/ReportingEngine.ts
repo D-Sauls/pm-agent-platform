@@ -1,4 +1,52 @@
-import type { NormalizedProjectSnapshot, WeeklyHighlightReport } from "../models/entities.js";
+import type {
+  ChangeRequest,
+  DeliveryMode,
+  NormalizedProjectSnapshot,
+  RaidLog,
+  StatusReport,
+  WeeklyHighlightReport
+} from "../models/entities.js";
+
+// Builds governance artifacts with delivery mode-specific framing.
+export class ReportingEngine {
+  buildWeeklyHighlightReport(
+    snapshot: NormalizedProjectSnapshot,
+    mode: DeliveryMode
+  ): StatusReport {
+    return {
+      id: `weekly-${snapshot.project.id}`,
+      projectId: snapshot.project.id,
+      periodStart: new Date().toISOString(),
+      periodEnd: new Date().toISOString(),
+      highlights: [`Stub weekly summary aligned to ${mode}`],
+      blockers: [],
+      nextSteps: []
+    };
+  }
+
+  buildRaidLog(snapshot: NormalizedProjectSnapshot, _mode: DeliveryMode): RaidLog {
+    return {
+      risks: snapshot.risks,
+      issues: snapshot.issues,
+      assumptions: ["Stub assumption"],
+      dependencies: snapshot.dependencies
+    };
+  }
+
+  buildChangeAssessment(
+    snapshot: NormalizedProjectSnapshot,
+    _mode: DeliveryMode,
+    title: string
+  ): ChangeRequest {
+    return {
+      id: `cr-${snapshot.project.id}`,
+      projectId: snapshot.project.id,
+      title,
+      impactSummary: "Stub impact summary",
+      recommendation: "Stub recommendation"
+    };
+  }
+}
 
 interface WeeklyReportInput {
   snapshot: NormalizedProjectSnapshot;

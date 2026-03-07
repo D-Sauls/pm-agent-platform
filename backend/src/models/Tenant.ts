@@ -9,6 +9,8 @@ export interface Tenant {
   licenseStatus: LicenseStatus;
   planType: PlanType;
   createdDate: string;
+  featureFlags?: Record<string, boolean>;
+  promptVersion?: string;
   connectorConfig: {
     primaryConnector?: ConnectorProvider;
     enabledConnectors: ConnectorProvider[];

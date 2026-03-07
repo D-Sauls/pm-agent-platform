@@ -1,9 +1,9 @@
 import { GraphConnector } from "./GraphConnector.js";
-import { ExternalProjectData } from "../baseConnector.js";
+import { ExternalProjectData, type ConnectorProvider } from "../baseConnector.js";
 
 // Microsoft Project-specific adapter built on Graph and Project endpoints.
 export class MicrosoftProjectConnector extends GraphConnector {
-  override provider = "microsoft-project";
+  override provider: ConnectorProvider = "microsoft-project";
 
   override async fetchProjectData(projectId: string): Promise<ExternalProjectData> {
     const base = await super.fetchProjectData(projectId);

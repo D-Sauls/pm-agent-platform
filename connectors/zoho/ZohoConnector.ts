@@ -1,7 +1,7 @@
-import { BaseConnector, ExternalProjectData } from "../baseConnector.js";
+import { BaseConnector, ExternalProjectData, type ConnectorProvider } from "../baseConnector.js";
 
 export class ZohoConnector implements BaseConnector {
-  provider = "zoho";
+  provider: ConnectorProvider = "zoho";
 
   async fetchProjectData(projectId: string): Promise<ExternalProjectData> {
     const now = new Date();

@@ -2,7 +2,7 @@ import { AgentService } from "../../../services/AgentService.js";
 import { NormalizationService } from "../../../services/NormalizationService.js";
 import { ReportingEngine } from "../../../services/ReportingEngine.js";
 import { ProjectContextService } from "../../../services/projectContextService.js";
-import { ReportingEngineMvp } from "../../../services/reportingEngine.js";
+import { ReportingEngineMvp } from "../../../services/ReportingEngine.js";
 import { PromptEngine } from "../prompt/PromptEngine.js";
 import type { PromptTemplateKey } from "../prompt/PromptEngine.js";
 import type { AgentOperation, OrchestrationInput, OrchestrationOutput } from "./types.js";

@@ -1,7 +1,7 @@
-import { BaseConnector, ExternalProjectData } from "../baseConnector.js";
+import { BaseConnector, ExternalProjectData, type ConnectorProvider } from "../baseConnector.js";
 
 export class ClickUpConnector implements BaseConnector {
-  provider = "clickup";
+  provider: ConnectorProvider = "clickup";
 
   async fetchProjectData(projectId: string): Promise<ExternalProjectData> {
     const now = new Date();

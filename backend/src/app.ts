@@ -2,6 +2,7 @@ import cors from "cors";
 import express from "express";
 import { authenticateUser } from "./middleware/AuthMiddleware.js";
 import { tenantMiddleware } from "./middleware/TenantMiddleware.js";
+import { adminRoutes } from "./routes/admin/index.js";
 import { agentRoutes } from "./routes/agentRoutes.js";
 
 export function createApp() {
@@ -10,6 +11,7 @@ export function createApp() {
   app.use(cors());
   app.use(express.json());
   app.use("/api/agent", authenticateUser, tenantMiddleware, agentRoutes);
+  app.use("/admin", adminRoutes);
 
   app.get("/health", (_req, res) => {
     res.json({ status: "ok" });

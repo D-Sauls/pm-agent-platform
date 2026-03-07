@@ -12,4 +12,12 @@ export class UsageLogService {
   listUsageByTenant(tenantId: string): UsageLog[] {
     return this.logs.filter((log) => log.tenantId === tenantId);
   }
+
+  listRecent(limit = 100): UsageLog[] {
+    return [...this.logs].sort((a, b) => b.timestamp.localeCompare(a.timestamp)).slice(0, limit);
+  }
+
+  countRequestsSince(sinceIsoDate: string): number {
+    return this.logs.filter((log) => log.timestamp >= sinceIsoDate).length;
+  }
 }

@@ -1,8 +1,8 @@
-import { BaseConnector, ExternalProjectData } from "../baseConnector.js";
+import { BaseConnector, ExternalProjectData, type ConnectorProvider } from "../baseConnector.js";
 
 // Base Microsoft 365 connector via Microsoft Graph.
 export class GraphConnector implements BaseConnector {
-  provider = "microsoft-graph";
+  provider: ConnectorProvider = "microsoft-graph";
 
   async fetchProjectData(projectId: string): Promise<ExternalProjectData> {
     const now = new Date();

@@ -1,4 +1,5 @@
 import type { Tenant } from "../models/Tenant.js";
+import type { AdminUser } from "../models/AdminUser.js";
 
 declare global {
   namespace Express {
@@ -9,6 +10,7 @@ declare global {
       };
       tenantId?: string;
       tenantContext?: Tenant;
+      adminUser?: AdminUser;
     }
   }
 }

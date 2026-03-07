@@ -22,6 +22,8 @@ export class TenantService {
       licenseStatus: "active",
       planType: input.planType,
       createdDate: new Date().toISOString(),
+      featureFlags: {},
+      promptVersion: "weekly_report:v1",
       connectorConfig: input.connectorConfig ?? { enabledConnectors: [] }
     };
     this.tenants.set(tenant.tenantId, tenant);
@@ -43,6 +45,10 @@ export class TenantService {
     return this.tenants.get(tenantId) ?? null;
   }
 
+  listTenants(): Tenant[] {
+    return Array.from(this.tenants.values());
+  }
+
   setLicenseStatus(tenantId: string, status: Tenant["licenseStatus"]): Tenant | null {
     const existing = this.tenants.get(tenantId);
     if (!existing) {
@@ -50,6 +56,47 @@ export class TenantService {
     }
 
     const updated: Tenant = { ...existing, licenseStatus: status };
+    this.tenants.set(tenantId, updated);
+    return updated;
+  }
+
+  assignPlanType(tenantId: string, planType: Tenant["planType"]): Tenant | null {
+    const existing = this.tenants.get(tenantId);
+    if (!existing) {
+      return null;
+    }
+
+    const updated: Tenant = { ...existing, planType };
+    this.tenants.set(tenantId, updated);
+    return updated;
+  }
+
+  suspendTenant(tenantId: string): Tenant | null {
+    return this.setLicenseStatus(tenantId, "suspended");
+  }
+
+  reactivateTenant(tenantId: string): Tenant | null {
+    return this.setLicenseStatus(tenantId, "active");
+  }
+
+  setTenantFeatureFlags(tenantId: string, flags: Record<string, boolean>): Tenant | null {
+    const existing = this.tenants.get(tenantId);
+    if (!existing) {
+      return null;
+    }
+
+    const updated: Tenant = { ...existing, featureFlags: flags };
+    this.tenants.set(tenantId, updated);
+    return updated;
+  }
+
+  setTenantPromptVersion(tenantId: string, promptVersion: string): Tenant | null {
+    const existing = this.tenants.get(tenantId);
+    if (!existing) {
+      return null;
+    }
+
+    const updated: Tenant = { ...existing, promptVersion };
     this.tenants.set(tenantId, updated);
     return updated;
   }
