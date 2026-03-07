@@ -17,7 +17,19 @@ export class AgentPlanner {
         rationale: "Detected reporting keywords"
       };
     }
-    if (this.hasAny(text, ["risk", "issue", "assumption", "dependency", "raid"])) {
+    if (
+      this.hasAny(text, [
+        "extract raid from these notes",
+        "turn these notes into risks and issues",
+        "identify risks from this meeting",
+        "capture assumptions and dependencies",
+        "risk",
+        "issue",
+        "assumption",
+        "dependency",
+        "raid"
+      ])
+    ) {
       return {
         workflowId: "raid_extraction",
         confidenceScore: 0.87,

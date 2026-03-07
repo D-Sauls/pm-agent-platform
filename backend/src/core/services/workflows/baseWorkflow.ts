@@ -1,4 +1,5 @@
 import type { NormalizedProjectContext, WeeklyReportOutput } from "../../models/projectModels.js";
+import type { RaidExtractionResult } from "../../models/raidModels.js";
 import type { TenantContext } from "../../models/tenantModels.js";
 
 export type WorkflowId =
@@ -19,9 +20,10 @@ export interface AgentExecutionContext {
 
 export interface WorkflowResult {
   workflowId: WorkflowId;
-  resultType: "report" | "raid" | "assessment" | "advice" | "summary";
+  resultType: "report" | "raid" | "raid_extraction" | "assessment" | "advice" | "summary";
   data:
     | WeeklyReportOutput
+    | RaidExtractionResult
     | {
         summary?: string;
         risks?: string[];

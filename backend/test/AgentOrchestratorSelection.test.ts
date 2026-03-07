@@ -16,7 +16,7 @@ test("AgentOrchestrator selects and executes weekly report workflow", async () =
   const { tenantContextService, projectContextService } = await createTestSystem();
   const registry = new WorkflowRegistry();
   registry.register(new WeeklyReportWorkflowV2(new ReportingEngine(new PromptEngine())));
-  registry.register(new RaidExtractionWorkflow());
+  registry.register(new RaidExtractionWorkflow(new PromptEngine()));
   registry.register(new ChangeAssessmentWorkflow());
   registry.register(new DeliveryAdvisorWorkflow());
   registry.register(new ProjectSummaryWorkflow());

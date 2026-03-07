@@ -52,7 +52,7 @@ export const weeklyReportWorkflow = new WeeklyReportWorkflow(
 );
 export const workflowRegistry = new WorkflowRegistry();
 workflowRegistry.register(new WeeklyReportWorkflowV2(reportingEngineV2));
-workflowRegistry.register(new RaidExtractionWorkflow());
+workflowRegistry.register(new RaidExtractionWorkflow(new PromptEngine()));
 workflowRegistry.register(new ChangeAssessmentWorkflow());
 workflowRegistry.register(new DeliveryAdvisorWorkflow());
 workflowRegistry.register(new ProjectSummaryWorkflow());

@@ -1,3 +1,4 @@
+import { PromptEngine } from "../prompt/PromptEngine.js";
 import { Router } from "express";
 import { z } from "zod";
 import {
@@ -9,6 +10,8 @@ import {
   weeklyReportWorkflow
 } from "../core/container.js";
 import { AppError } from "../core/errors/AppError.js";
+import type { NormalizedProjectContext } from "../core/models/projectModels.js";
+import { RaidExtractionWorkflow } from "../core/services/workflows/raidExtractionWorkflow.js";
 import { authContextMiddleware } from "../core/middleware/AuthContextMiddleware.js";
 import { licenseValidationMiddleware } from "../core/middleware/LicenseValidationMiddleware.js";
 import { requestLoggingMiddleware } from "../core/middleware/RequestLoggingMiddleware.js";
@@ -24,10 +27,18 @@ const agentExecuteRequestSchema = z.object({
   projectId: z.string().min(1),
   message: z.string().min(1)
 });
+const raidExtractionRequestSchema = z.object({
+  tenantId: z.string().min(1),
+  projectId: z.string().optional(),
+  notesText: z.string().min(1),
+  sourceType: z.enum(["meeting_notes", "status_notes", "workshop_notes", "generic"]).optional(),
+  metadata: z.record(z.unknown()).optional()
+});
 
 export const productRoutes = Router();
 const resolveTenant = tenantResolutionMiddleware(tenantContextServiceV2);
 const validateLicense = licenseValidationMiddleware(licenseServiceV2);
+const raidWorkflow = new RaidExtractionWorkflow(new PromptEngine());
 
 productRoutes.use(authContextMiddleware);
 productRoutes.use(requestLoggingMiddleware(usageLogServiceV2));
@@ -72,6 +83,63 @@ productRoutes.post("/workflows/weekly-report", resolveTenant, validateLicense, a
       connectorUsed: response.report.projectSummary
     };
     res.json(response);
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.post("/workflows/raid-extraction", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsedRequest = raidExtractionRequestSchema.safeParse(req.body);
+    if (!parsedRequest.success) {
+      throw new AppError("VALIDATION_ERROR", "Invalid RAID extraction request payload", 400, {
+        issues: parsedRequest.error.issues
+      });
+    }
+    const parsed = parsedRequest.data;
+    const tenantContext = req.tenantContext;
+    if (!tenantContext) {
+      throw new AppError("TENANT_NOT_FOUND", "Tenant context missing", 400);
+    }
+
+    const projectContext: NormalizedProjectContext = parsed.projectId
+      ? await projectContextServiceV2.getProjectContext(tenantContext, parsed.projectId)
+      : {
+          project: {
+            projectId: "notes-only",
+            tenantId: tenantContext.tenant.tenantId,
+            sourceSystem: "notes",
+            name: "Notes Only Context",
+            deliveryMode: "hybrid"
+          },
+          tasks: [],
+          milestones: [],
+          risks: [],
+          issues: [],
+          dependencies: [],
+          statusSummary: "Amber"
+        };
+
+    const executionStart = Date.now();
+    const response = await raidWorkflow.execute({
+      tenantContext,
+      projectContext,
+      userRequest: parsed.notesText,
+      workflowId: "raid_extraction",
+      timestamp: new Date(),
+      metadata: { sourceType: parsed.sourceType ?? "generic", ...(parsed.metadata ?? {}) }
+    });
+
+    req.requestMetadata = {
+      requestType: "workflow_execute",
+      workflowType: "raid_extraction",
+      workflowId: "raid_extraction",
+      confidenceScore: response.confidenceScore,
+      connectorUsed: projectContext.project.sourceSystem,
+      executionTimeMs: Date.now() - executionStart
+    };
+
+    res.json(response.data);
   } catch (error) {
     next(error);
   }
