@@ -1,4 +1,9 @@
-node_modules/
+node_modules
 .env
-data/
+.env.local
+dist
+build
+coverage
+logs
 *.log
+.vscode

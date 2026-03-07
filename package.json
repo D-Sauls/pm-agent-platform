@@ -1,15 +1,13 @@
 {
-  "name": "pwa-onboarding-application",
-  "version": "1.0.0",
-  "description": "Backend-first onboarding app with secure signup",
-  "main": "server.js",
+  "name": "project-management-agent-assistant",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "google-auth-library": "^9.15.0"
+    "dev": "echo \"Run frontend and backend dev scripts from each workspace\"",
+    "build": "npm run build -w backend && npm run build -w frontend"
   }
 }
