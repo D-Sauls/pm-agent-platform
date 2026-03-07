@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import {
+  agentOrchestratorV2,
   licenseServiceV2,
   projectContextServiceV2,
   tenantContextServiceV2,
@@ -17,6 +18,11 @@ const weeklyReportRequestSchema = z.object({
   tenantId: z.string().min(1),
   projectId: z.string().min(1),
   userPrompt: z.string().optional()
+});
+const agentExecuteRequestSchema = z.object({
+  tenantId: z.string().min(1),
+  projectId: z.string().min(1),
+  message: z.string().min(1)
 });
 
 export const productRoutes = Router();
@@ -64,6 +70,25 @@ productRoutes.post("/workflows/weekly-report", resolveTenant, validateLicense, a
       requestType: "workflow_execute",
       workflowType: "weekly_report",
       connectorUsed: response.report.projectSummary
+    };
+    res.json(response);
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.post("/agent/execute", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsed = agentExecuteRequestSchema.parse(req.body);
+    const executionStart = Date.now();
+    const response = await agentOrchestratorV2.execute(parsed);
+    req.requestMetadata = {
+      requestType: "agent_execute",
+      workflowType: response.workflowId,
+      workflowId: response.workflowId,
+      confidenceScore: response.confidenceScore,
+      connectorUsed: response.connectorUsed,
+      executionTimeMs: Date.now() - executionStart
     };
     res.json(response);
   } catch (error) {

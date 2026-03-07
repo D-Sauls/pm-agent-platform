@@ -41,8 +41,11 @@ export interface UsageLog {
   userId?: string;
   requestType: string;
   workflowType?: string;
+  workflowId?: string;
+  confidenceScore?: number;
   connectorUsed?: string | null;
   responseTimeMs?: number;
+  executionTimeMs?: number;
   success: boolean;
   timestamp: Date;
   errorMessage?: string | null;

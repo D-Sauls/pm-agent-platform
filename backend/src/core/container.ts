@@ -17,6 +17,14 @@ import { ReportingEngine } from "./services/ReportingEngine.js";
 import { TenantContextService } from "./services/TenantContextService.js";
 import { TenantService } from "./services/TenantService.js";
 import { UsageLogService } from "./services/UsageLogService.js";
+import { AgentOrchestrator } from "./services/workflows/agentOrchestrator.js";
+import { AgentPlanner } from "./services/workflows/agentPlanner.js";
+import { ChangeAssessmentWorkflow } from "./services/workflows/changeAssessmentWorkflow.js";
+import { DeliveryAdvisorWorkflow } from "./services/workflows/deliveryAdvisorWorkflow.js";
+import { ProjectSummaryWorkflow } from "./services/workflows/projectSummaryWorkflow.js";
+import { RaidExtractionWorkflow } from "./services/workflows/raidExtractionWorkflow.js";
+import { WeeklyReportWorkflowV2 } from "./services/workflows/weeklyReportWorkflow.js";
+import { WorkflowRegistry } from "./services/workflows/workflowRegistry.js";
 import { WeeklyReportWorkflow } from "./workflows/WeeklyReportWorkflow.js";
 
 const tenantRepository = new MemoryTenantRepository();
@@ -41,6 +49,19 @@ export const weeklyReportWorkflow = new WeeklyReportWorkflow(
   tenantContextServiceV2,
   projectContextServiceV2,
   reportingEngineV2
+);
+export const workflowRegistry = new WorkflowRegistry();
+workflowRegistry.register(new WeeklyReportWorkflowV2(reportingEngineV2));
+workflowRegistry.register(new RaidExtractionWorkflow());
+workflowRegistry.register(new ChangeAssessmentWorkflow());
+workflowRegistry.register(new DeliveryAdvisorWorkflow());
+workflowRegistry.register(new ProjectSummaryWorkflow());
+export const agentPlanner = new AgentPlanner();
+export const agentOrchestratorV2 = new AgentOrchestrator(
+  agentPlanner,
+  workflowRegistry,
+  tenantContextServiceV2,
+  projectContextServiceV2
 );
 
 void (async () => {

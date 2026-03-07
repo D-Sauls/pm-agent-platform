@@ -12,8 +12,11 @@ export function requestLoggingMiddleware(usageLogService: UsageLogService) {
         userId: req.userContext?.userId,
         requestType: req.requestMetadata?.requestType ?? `${req.method} ${req.path}`,
         workflowType: req.requestMetadata?.workflowType,
+        workflowId: req.requestMetadata?.workflowId,
+        confidenceScore: req.requestMetadata?.confidenceScore,
         connectorUsed: req.requestMetadata?.connectorUsed,
         responseTimeMs: Date.now() - start,
+        executionTimeMs: req.requestMetadata?.executionTimeMs,
         success: res.statusCode < 400,
         errorMessage: res.statusCode >= 400 ? `HTTP ${res.statusCode}` : null
       });

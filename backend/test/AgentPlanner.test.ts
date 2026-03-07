@@ -1,0 +1,22 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { AgentPlanner } from "../src/core/services/workflows/agentPlanner.js";
+
+test("AgentPlanner maps weekly report request", () => {
+  const planner = new AgentPlanner();
+  const result = planner.plan("generate weekly report");
+  assert.equal(result.workflowId, "weekly_report");
+  assert.ok(result.confidenceScore > 0.9);
+});
+
+test("AgentPlanner maps RAID request", () => {
+  const planner = new AgentPlanner();
+  const result = planner.plan("turn these notes into risks and issues");
+  assert.equal(result.workflowId, "raid_extraction");
+});
+
+test("AgentPlanner fallback maps to project summary", () => {
+  const planner = new AgentPlanner();
+  const result = planner.plan("help");
+  assert.equal(result.workflowId, "project_summary");
+});

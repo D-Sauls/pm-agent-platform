@@ -21,7 +21,10 @@ declare global {
       requestMetadata?: {
         requestType: string;
         workflowType?: string;
+        workflowId?: string;
+        confidenceScore?: number;
         connectorUsed?: string | null;
+        executionTimeMs?: number;
       };
     }
   }

@@ -6,8 +6,11 @@ interface UsageLogInput {
   userId?: string;
   requestType: string;
   workflowType?: string;
+  workflowId?: string;
+  confidenceScore?: number;
   connectorUsed?: string | null;
   responseTimeMs?: number;
+  executionTimeMs?: number;
   success: boolean;
   errorMessage?: string | null;
 }
@@ -22,8 +25,11 @@ export class UsageLogService {
       userId: input.userId,
       requestType: input.requestType,
       workflowType: input.workflowType,
+      workflowId: input.workflowId,
+      confidenceScore: input.confidenceScore,
       connectorUsed: input.connectorUsed ?? null,
       responseTimeMs: input.responseTimeMs,
+      executionTimeMs: input.executionTimeMs,
       success: input.success,
       timestamp: new Date(),
       errorMessage: input.errorMessage ?? null
