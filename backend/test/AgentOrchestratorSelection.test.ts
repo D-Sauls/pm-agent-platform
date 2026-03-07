@@ -18,7 +18,7 @@ test("AgentOrchestrator selects and executes weekly report workflow", async () =
   registry.register(new WeeklyReportWorkflowV2(new ReportingEngine(new PromptEngine())));
   registry.register(new RaidExtractionWorkflow(new PromptEngine()));
   registry.register(new ChangeAssessmentWorkflow(new PromptEngine()));
-  registry.register(new DeliveryAdvisorWorkflow());
+  registry.register(new DeliveryAdvisorWorkflow(new PromptEngine()));
   registry.register(new ProjectSummaryWorkflow());
 
   const orchestrator = new AgentOrchestrator(

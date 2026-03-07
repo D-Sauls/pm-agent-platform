@@ -12,6 +12,7 @@ import {
 import { AppError } from "../core/errors/AppError.js";
 import type { NormalizedProjectContext } from "../core/models/projectModels.js";
 import { ChangeAssessmentWorkflow } from "../core/services/workflows/changeAssessmentWorkflow.js";
+import { DeliveryAdvisorWorkflow } from "../core/services/workflows/deliveryAdvisorWorkflow.js";
 import { RaidExtractionWorkflow } from "../core/services/workflows/raidExtractionWorkflow.js";
 import { authContextMiddleware } from "../core/middleware/AuthContextMiddleware.js";
 import { licenseValidationMiddleware } from "../core/middleware/LicenseValidationMiddleware.js";
@@ -43,12 +44,20 @@ const changeAssessmentRequestSchema = z.object({
   requestedBy: z.string().nullable().optional(),
   metadata: z.record(z.unknown()).optional()
 });
+const deliveryAdvisorRequestSchema = z.object({
+  tenantId: z.string().min(1),
+  projectId: z.string().optional(),
+  message: z.string().optional(),
+  contextType: z.enum(["delivery_advice", "risk_review", "priority_review"]).optional(),
+  metadata: z.record(z.unknown()).optional()
+});
 
 export const productRoutes = Router();
 const resolveTenant = tenantResolutionMiddleware(tenantContextServiceV2);
 const validateLicense = licenseValidationMiddleware(licenseServiceV2);
 const raidWorkflow = new RaidExtractionWorkflow(new PromptEngine());
 const changeWorkflow = new ChangeAssessmentWorkflow(new PromptEngine());
+const deliveryWorkflow = new DeliveryAdvisorWorkflow(new PromptEngine());
 
 productRoutes.use(authContextMiddleware);
 productRoutes.use(requestLoggingMiddleware(usageLogServiceV2));
@@ -205,6 +214,66 @@ productRoutes.post("/workflows/change-assessment", resolveTenant, validateLicens
       requestType: "workflow_execute",
       workflowType: "change_assessment",
       workflowId: "change_assessment",
+      confidenceScore: response.confidenceScore,
+      connectorUsed: projectContext.project.sourceSystem,
+      executionTimeMs: Date.now() - executionStart
+    };
+
+    res.json(response.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.post("/workflows/delivery-advisor", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsedRequest = deliveryAdvisorRequestSchema.safeParse(req.body);
+    if (!parsedRequest.success) {
+      throw new AppError("VALIDATION_ERROR", "Invalid delivery advisor request payload", 400, {
+        issues: parsedRequest.error.issues
+      });
+    }
+    const parsed = parsedRequest.data;
+    const tenantContext = req.tenantContext;
+    if (!tenantContext) {
+      throw new AppError("TENANT_NOT_FOUND", "Tenant context missing", 400);
+    }
+
+    const projectContext: NormalizedProjectContext = parsed.projectId
+      ? await projectContextServiceV2.getProjectContext(tenantContext, parsed.projectId)
+      : {
+          project: {
+            projectId: "delivery-only",
+            tenantId: tenantContext.tenant.tenantId,
+            sourceSystem: "notes",
+            name: "Delivery Advisory Context",
+            deliveryMode: "hybrid"
+          },
+          tasks: [],
+          milestones: [],
+          risks: [],
+          issues: [],
+          dependencies: [],
+          statusSummary: "Amber"
+        };
+
+    const executionStart = Date.now();
+    const response = await deliveryWorkflow.execute({
+      tenantContext,
+      projectContext,
+      userRequest: parsed.message ?? "What should I focus on next?",
+      workflowId: "delivery_advisor",
+      timestamp: new Date(),
+      metadata: {
+        contextType: parsed.contextType ?? "delivery_advice",
+        ...(parsed.metadata ?? {})
+      }
+    });
+
+    req.requestMetadata = {
+      requestType: "workflow_execute",
+      workflowType: "delivery_advisor",
+      workflowId: "delivery_advisor",
       confidenceScore: response.confidenceScore,
       connectorUsed: projectContext.project.sourceSystem,
       executionTimeMs: Date.now() - executionStart

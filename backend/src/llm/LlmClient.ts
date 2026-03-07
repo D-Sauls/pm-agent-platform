@@ -111,6 +111,34 @@ export class OpenAiLlmClient implements LlmClient {
         warnings: []
       });
     }
+    if (prompt.includes("Template: delivery_advisor")) {
+      return JSON.stringify({
+        priorities: [
+          {
+            title: "Address at-risk milestone",
+            description: "Milestone indicates delivery risk if mitigation is not approved.",
+            category: "risk",
+            urgency: "high",
+            recommendedAction: "Confirm mitigation owner and due date in this week's governance forum.",
+            confidence: 0.86
+          },
+          {
+            title: "Resolve open blocker",
+            description: "Active blocker may delay near-term delivery tasks.",
+            category: "blocker",
+            urgency: "high",
+            recommendedAction: "Escalate blocker owner and track daily until closure.",
+            confidence: 0.82
+          }
+        ],
+        risks: ["Dependency confirmation delay may impact release readiness."],
+        blockers: ["Test environment access waiting on platform team."],
+        governanceReminders: ["Review stage-gate readiness before baseline changes."],
+        upcomingMilestones: ["Release readiness review (next 5 days)"],
+        assumptionsMade: ["Current task statuses reflect latest reporting cycle."],
+        warnings: []
+      });
+    }
 
     return "Stub LLM response";
   }

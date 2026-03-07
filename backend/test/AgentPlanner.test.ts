@@ -27,6 +27,12 @@ test("AgentPlanner maps change-control phrase to ChangeAssessmentWorkflow", () =
   assert.equal(result.workflowId, "change_assessment");
 });
 
+test("AgentPlanner maps delivery advice phrase to DeliveryAdvisorWorkflow", () => {
+  const planner = new AgentPlanner();
+  const result = planner.plan("what should I focus on next");
+  assert.equal(result.workflowId, "delivery_advisor");
+});
+
 test("AgentPlanner fallback maps to project summary", () => {
   const planner = new AgentPlanner();
   const result = planner.plan("help");

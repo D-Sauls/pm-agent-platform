@@ -1,4 +1,5 @@
 import type { ChangeAssessmentResult } from "../../models/changeAssessmentModels.js";
+import type { DeliveryAdvisorResult } from "../../models/deliveryAdvisorModels.js";
 import type { NormalizedProjectContext, WeeklyReportOutput } from "../../models/projectModels.js";
 import type { RaidExtractionResult } from "../../models/raidModels.js";
 import type { TenantContext } from "../../models/tenantModels.js";
@@ -27,11 +28,13 @@ export interface WorkflowResult {
     | "raid_extraction"
     | "assessment"
     | "change_assessment"
+    | "delivery_advisor"
     | "advice"
     | "summary";
   data:
     | WeeklyReportOutput
     | ChangeAssessmentResult
+    | DeliveryAdvisorResult
     | RaidExtractionResult
     | {
         summary?: string;

@@ -55,7 +55,19 @@ export class AgentPlanner {
         rationale: "Detected change assessment keywords"
       };
     }
-    if (this.hasAny(text, ["focus on next", "next actions", "what should i focus"])) {
+    if (
+      this.hasAny(text, [
+        "what should i focus on next",
+        "delivery advice",
+        "delivery risks",
+        "top pm priorities",
+        "project risks",
+        "delivery blockers",
+        "focus on next",
+        "next actions",
+        "what should i focus"
+      ])
+    ) {
       return {
         workflowId: "delivery_advisor",
         confidenceScore: 0.83,
