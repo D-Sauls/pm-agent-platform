@@ -26,6 +26,6 @@ export function tenantMiddleware(req: Request, res: Response, next: NextFunction
   }
 
   req.tenantId = tenantId;
-  req.tenantContext = tenantContext;
+  req.legacyTenantContext = tenantContext;
   next();
 }
