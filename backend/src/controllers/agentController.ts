@@ -34,12 +34,22 @@ export async function handleAgentResponse(req: Request, res: Response) {
   }
 
   const responseTime = Date.now() - startTime;
+  req.requestMetadata = {
+    requestType: "agent_respond",
+    workflowType: parsedResponse.data.operation,
+    workflowId: parsedResponse.data.operation,
+    connectorUsed: parsedResponse.data.connectorUsed ?? "internal-model",
+    executionTimeMs: responseTime
+  };
   usageLogService.recordUsage({
+    requestId: req.requestId,
+    correlationId: req.correlationId,
     tenantId: req.tenantId ?? "unknown-tenant",
     requestType: parsedResponse.data.operation,
     timestamp: new Date().toISOString(),
     connectorUsed: parsedResponse.data.connectorUsed ?? "internal-model",
-    responseTime
+    responseTime,
+    success: true
   });
 
   res.json(parsedResponse.data);

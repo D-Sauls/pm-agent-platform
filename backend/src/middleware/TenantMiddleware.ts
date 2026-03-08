@@ -7,13 +7,21 @@ export function tenantMiddleware(req: Request, res: Response, next: NextFunction
   const tenantId = headerTenantId ?? req.authUser?.defaultTenantId;
 
   if (!tenantId) {
-    res.status(400).json({ error: "Missing tenantId. Set x-tenant-id header." });
+    res.status(400).json({
+      code: "VALIDATION_ERROR",
+      message: "Missing tenantId. Set x-tenant-id header.",
+      requestId: req.requestId
+    });
     return;
   }
 
   const tenantContext = tenantService.retrieveTenantContext(tenantId);
   if (!tenantContext) {
-    res.status(404).json({ error: `Tenant ${tenantId} not found` });
+    res.status(404).json({
+      code: "TENANT_NOT_FOUND",
+      message: `Tenant ${tenantId} not found`,
+      requestId: req.requestId
+    });
     return;
   }
 
@@ -21,7 +29,7 @@ export function tenantMiddleware(req: Request, res: Response, next: NextFunction
     licenseService.assertLicenseActive(tenantContext);
   } catch (error) {
     const message = error instanceof Error ? error.message : "License inactive";
-    res.status(403).json({ error: message });
+    res.status(403).json({ code: "LICENSE_INACTIVE", message, requestId: req.requestId });
     return;
   }
 

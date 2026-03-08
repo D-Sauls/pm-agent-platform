@@ -21,6 +21,19 @@ interface AdminAuditVm {
 export function AuditLogsPage() {
   const [usageLogs, setUsageLogs] = useState<UsageLogVm[]>([]);
   const [adminLogs, setAdminLogs] = useState<AdminAuditVm[]>([]);
+  const [workflowFailures, setWorkflowFailures] = useState<Array<{
+    tenantId?: string;
+    workflowId?: string;
+    errorCode?: string;
+    timestamp: string;
+  }>>([]);
+  const [connectorFailures, setConnectorFailures] = useState<Array<{
+    tenantId: string;
+    connectorName: string;
+    status: string;
+    reason?: string;
+    timestamp: string;
+  }>>([]);
   const [tenantFilter, setTenantFilter] = useState("");
 
   useEffect(() => {
@@ -31,6 +44,22 @@ export function AuditLogsPage() {
       .catch(() => undefined);
     getAdminJson<{ items: AdminAuditVm[] }>("/logs/admin-actions?page=1&pageSize=50")
       .then((result) => setAdminLogs(result.items))
+      .catch(() => undefined);
+    getAdminJson<{ items: Array<{ tenantId?: string; workflowId?: string; errorCode?: string; timestamp: string }> }>(
+      "/logs/workflow-failures"
+    )
+      .then((result) => setWorkflowFailures(result.items))
+      .catch(() => undefined);
+    getAdminJson<{
+      items: Array<{
+        tenantId: string;
+        connectorName: string;
+        status: string;
+        reason?: string;
+        timestamp: string;
+      }>;
+    }>("/logs/connector-failures")
+      .then((result) => setConnectorFailures(result.items))
       .catch(() => undefined);
   }, [tenantFilter]);
 
@@ -56,6 +85,22 @@ export function AuditLogsPage() {
       {adminLogs.slice(0, 20).map((row) => (
         <p key={row.id}>
           [{row.timestamp}] {row.adminEmail} - {row.action} {row.tenantId ? `(${row.tenantId})` : ""}
+        </p>
+      ))}
+
+      <h3>Workflow Failures</h3>
+      {workflowFailures.length === 0 ? <p>No workflow failures captured.</p> : null}
+      {workflowFailures.slice(0, 20).map((row, index) => (
+        <p key={`${row.timestamp}-${index}`}>
+          [{row.timestamp}] {row.tenantId ?? "n/a"} {row.workflowId ?? "unknown"} {row.errorCode ?? ""}
+        </p>
+      ))}
+
+      <h3>Connector Failures</h3>
+      {connectorFailures.length === 0 ? <p>No connector failures captured.</p> : null}
+      {connectorFailures.slice(0, 20).map((row, index) => (
+        <p key={`${row.timestamp}-${index}`}>
+          [{row.timestamp}] {row.tenantId} {row.connectorName} ({row.status}) {row.reason ?? ""}
         </p>
       ))}
     </section>

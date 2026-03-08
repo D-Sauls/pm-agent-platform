@@ -1,4 +1,5 @@
 import type { UsageLog } from "../models/UsageLog.js";
+import { loggingService } from "../observability/runtime.js";
 
 // Captures per-tenant API consumption metrics for operational monitoring.
 export class UsageLogService {
@@ -6,7 +7,15 @@ export class UsageLogService {
 
   recordUsage(entry: UsageLog): void {
     this.logs.push(entry);
-    console.info("[TenantUsage]", JSON.stringify(entry));
+    loggingService.info("legacy.usage_log", {
+      requestId: entry.requestId,
+      correlationId: entry.correlationId,
+      tenantId: entry.tenantId,
+      requestType: entry.requestType,
+      connectorUsed: entry.connectorUsed,
+      responseTime: entry.responseTime,
+      success: entry.success ?? true
+    });
   }
 
   listUsageByTenant(tenantId: string): UsageLog[] {

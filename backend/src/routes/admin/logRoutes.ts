@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { adminAuditService, usageLogService } from "../../context/platformContext.js";
 import { requireAdminRole } from "../../middleware/AdminRoleMiddleware.js";
+import { connectorTelemetryService, workflowTelemetryService } from "../../observability/runtime.js";
 
 export const adminLogRoutes = Router();
 
@@ -50,6 +51,45 @@ adminLogRoutes.get(
       page,
       pageSize,
       items: recent.slice(start, start + pageSize)
+    });
+  }
+);
+
+adminLogRoutes.get(
+  "/workflow-failures",
+  requireAdminRole(["superadmin", "supportadmin", "readonlyadmin"]),
+  (_req, res) => {
+    res.json({ items: workflowTelemetryService.failures(100) });
+  }
+);
+
+adminLogRoutes.get(
+  "/connector-failures",
+  requireAdminRole(["superadmin", "supportadmin", "readonlyadmin"]),
+  (_req, res) => {
+    res.json({ items: connectorTelemetryService.recentFailures(100) });
+  }
+);
+
+adminLogRoutes.get(
+  "/error-summary",
+  requireAdminRole(["superadmin", "supportadmin", "readonlyadmin"]),
+  (_req, res) => {
+    const recent = usageLogService.listRecent(1000).filter((entry) => entry.success === false);
+    const counts = new Map<string, number>();
+    for (const row of recent) {
+      const key = row.errorMessage ?? "unknown_error";
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    const topErrorCategories = Array.from(counts.entries())
+      .map(([error, count]) => ({ error, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    res.json({
+      totalFailures: recent.length,
+      rateLimitedRequests: recent.filter((entry) => (entry.errorMessage ?? "").includes("429")).length,
+      topErrorCategories
     });
   }
 );

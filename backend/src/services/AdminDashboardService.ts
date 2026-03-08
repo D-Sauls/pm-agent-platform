@@ -2,6 +2,7 @@ import type { Tenant } from "../models/Tenant.js";
 import type { License } from "../models/License.js";
 import type { AdminAuditLog } from "../models/AdminAuditLog.js";
 import type { UsageLog } from "../models/UsageLog.js";
+import { connectorTelemetryService, workflowTelemetryService } from "../observability/runtime.js";
 import { AdminAuditService } from "./AdminAuditService.js";
 import { ConnectorHealthService } from "./ConnectorHealthService.js";
 import { EnhancementRequestService } from "./EnhancementRequestService.js";
@@ -19,6 +20,20 @@ export interface DashboardSummary {
   recentAdminActions: AdminAuditLog[];
   recentWorkflowActivity: UsageLog[];
   topUsedWorkflows: Array<{ requestType: string; count: number }>;
+  recentConnectorFailures: Array<{
+    tenantId: string;
+    connectorName: string;
+    status: string;
+    reason?: string;
+    timestamp: string;
+  }>;
+  recentWorkflowFailures: Array<{
+    tenantId?: string;
+    workflowId?: string;
+    workflowType?: string;
+    errorCode?: string;
+    timestamp: string;
+  }>;
 }
 
 // Aggregates operational summary cards for the admin dashboard.
@@ -47,7 +62,21 @@ export class AdminDashboardService {
       totalRequestsLast24Hours: this.usageLogService.countRequestsSince(since),
       recentAdminActions: this.adminAuditService.listRecent(10),
       recentWorkflowActivity: this.usageLogService.listRecent(10),
-      topUsedWorkflows: this.usageLogService.topRequestTypes(5)
+      topUsedWorkflows: this.usageLogService.topRequestTypes(5),
+      recentConnectorFailures: connectorTelemetryService.recentFailures(10).map((entry) => ({
+        tenantId: entry.tenantId,
+        connectorName: entry.connectorName,
+        status: entry.status,
+        reason: entry.reason,
+        timestamp: entry.timestamp
+      })),
+      recentWorkflowFailures: workflowTelemetryService.failures(10).map((entry) => ({
+        tenantId: entry.tenantId,
+        workflowId: entry.workflowId,
+        workflowType: entry.workflowType,
+        errorCode: entry.errorCode,
+        timestamp: entry.timestamp
+      }))
     };
   }
 

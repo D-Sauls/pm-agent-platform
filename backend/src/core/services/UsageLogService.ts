@@ -2,6 +2,8 @@ import type { UsageLog } from "../models/tenantModels.js";
 import type { UsageLogRepository } from "../repositories/interfaces.js";
 
 interface UsageLogInput {
+  requestId?: string;
+  correlationId?: string;
   tenantId: string;
   userId?: string;
   requestType: string;
@@ -31,6 +33,8 @@ export class UsageLogService {
   async recordWorkflowRequest(input: UsageLogInput): Promise<void> {
     const log: UsageLog = {
       id: `usage-${Date.now()}-${Math.floor(Math.random() * 100000)}`,
+      requestId: input.requestId,
+      correlationId: input.correlationId,
       tenantId: input.tenantId,
       userId: input.userId,
       requestType: input.requestType,

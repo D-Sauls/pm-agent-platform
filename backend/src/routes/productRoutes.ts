@@ -29,6 +29,7 @@ import { authContextMiddleware } from "../core/middleware/AuthContextMiddleware.
 import { licenseValidationMiddleware } from "../core/middleware/LicenseValidationMiddleware.js";
 import { requestLoggingMiddleware } from "../core/middleware/RequestLoggingMiddleware.js";
 import { tenantResolutionMiddleware } from "../core/middleware/TenantResolutionMiddleware.js";
+import { connectorTelemetryService, retryPolicyService } from "../observability/runtime.js";
 
 const weeklyReportRequestSchema = z.object({
   tenantId: z.string().min(1),
@@ -251,6 +252,9 @@ productRoutes.post("/workflows/raid-extraction", resolveTenant, validateLicense,
       workflowType: "raid_extraction",
       workflowId: "raid_extraction",
       confidenceScore: response.confidenceScore,
+      warningsCount: Array.isArray((response.data as { warnings?: unknown[] }).warnings)
+        ? (response.data as { warnings: unknown[] }).warnings.length
+        : 0,
       connectorUsed: projectContext.project.sourceSystem,
       executionTimeMs: Date.now() - executionStart
     };
@@ -312,6 +316,9 @@ productRoutes.post("/workflows/change-assessment", resolveTenant, validateLicens
       workflowType: "change_assessment",
       workflowId: "change_assessment",
       confidenceScore: response.confidenceScore,
+      warningsCount: Array.isArray((response.data as { warnings?: unknown[] }).warnings)
+        ? (response.data as { warnings: unknown[] }).warnings.length
+        : 0,
       connectorUsed: projectContext.project.sourceSystem,
       executionTimeMs: Date.now() - executionStart
     };
@@ -372,6 +379,9 @@ productRoutes.post("/workflows/delivery-advisor", resolveTenant, validateLicense
       workflowType: "delivery_advisor",
       workflowId: "delivery_advisor",
       confidenceScore: response.confidenceScore,
+      warningsCount: Array.isArray((response.data as { warnings?: unknown[] }).warnings)
+        ? (response.data as { warnings: unknown[] }).warnings.length
+        : 0,
       connectorUsed: projectContext.project.sourceSystem,
       executionTimeMs: Date.now() - executionStart
     };
@@ -432,6 +442,9 @@ productRoutes.post("/workflows/project-summary", resolveTenant, validateLicense,
       workflowType: "project_summary",
       workflowId: "project_summary",
       confidenceScore: response.confidenceScore,
+      warningsCount: Array.isArray((response.data as { warnings?: unknown[] }).warnings)
+        ? (response.data as { warnings: unknown[] }).warnings.length
+        : 0,
       connectorUsed: projectContext.project.sourceSystem,
       executionTimeMs: Date.now() - executionStart
     };
@@ -495,6 +508,9 @@ productRoutes.post("/workflows/forecast", resolveTenant, validateLicense, async 
       workflowId: "forecast",
       forecastType,
       confidenceScore: response.confidenceScore,
+      warningsCount: Array.isArray((response.data as { warnings?: unknown[] }).warnings)
+        ? (response.data as { warnings: unknown[] }).warnings.length
+        : 0,
       connectorUsed: projectContext.project.sourceSystem,
       executionTimeMs: Date.now() - executionStart
     };
@@ -806,6 +822,16 @@ productRoutes.get("/connectors/clickup/health", resolveTenant, validateLicense, 
     }
     const executionStart = Date.now();
     const result = await clickUpConnectorV2.healthCheck(tenantContext);
+    connectorTelemetryService.record({
+      requestId: req.requestId ?? "unknown-request",
+      tenantId: tenantContext.tenant.tenantId,
+      connectorName: "clickup",
+      operation: "health_check",
+      status:
+        result.status === "unhealthy" ? "unhealthy" : result.status === "degraded" ? "degraded" : "healthy",
+      responseTimeMs: Date.now() - executionStart,
+      reason: result.message
+    });
     req.requestMetadata = {
       requestType: "connector_clickup_health",
       workflowType: "connector_health_check",
@@ -822,7 +848,23 @@ productRoutes.get("/connectors/clickup/health", resolveTenant, validateLicense, 
 productRoutes.get("/connectors/:tenantId/health", resolveTenant, validateLicense, async (req, res, next) => {
   try {
     const tenantContext = await tenantContextServiceV2.resolve(req.params.tenantId);
-    const health = await projectContextServiceV2.healthForTenant(tenantContext);
+    const start = Date.now();
+    const health = await retryPolicyService.execute(
+      "connector.aggregate_health",
+      () => projectContextServiceV2.healthForTenant(tenantContext),
+      { maxAttempts: 2, baseDelayMs: 100 }
+    );
+    for (const connector of health) {
+      connectorTelemetryService.record({
+        requestId: req.requestId ?? "unknown-request",
+        tenantId: req.params.tenantId,
+        connectorName: connector.connector,
+        operation: "aggregate_health",
+        status: connector.healthy ? "healthy" : "degraded",
+        responseTimeMs: Date.now() - start,
+        reason: connector.healthy ? undefined : "Connector health check returned unhealthy"
+      });
+    }
     req.requestMetadata = { requestType: "connector_health_check" };
     res.json({ tenantId: req.params.tenantId, connectors: health });
   } catch (error) {
@@ -851,13 +893,27 @@ productRoutes.post("/connectors/clickup/test-sync", resolveTenant, validateLicen
     }
 
     const executionStart = Date.now();
-    const [project, tasks, milestones, status, timeEntries] = await Promise.all([
-      clickUpConnectorV2.getProject(tenantContext, effectiveProjectId),
-      clickUpConnectorV2.getTasks(tenantContext, effectiveProjectId),
-      clickUpConnectorV2.getMilestones(tenantContext, effectiveProjectId),
-      clickUpConnectorV2.getStatus(tenantContext, effectiveProjectId),
-      clickUpConnectorV2.getTimeEntries(tenantContext, effectiveProjectId)
-    ]);
+    const [project, tasks, milestones, status, timeEntries] = await retryPolicyService.execute(
+      "connector.clickup.test_sync",
+      () =>
+        Promise.all([
+          clickUpConnectorV2.getProject(tenantContext, effectiveProjectId),
+          clickUpConnectorV2.getTasks(tenantContext, effectiveProjectId),
+          clickUpConnectorV2.getMilestones(tenantContext, effectiveProjectId),
+          clickUpConnectorV2.getStatus(tenantContext, effectiveProjectId),
+          clickUpConnectorV2.getTimeEntries(tenantContext, effectiveProjectId)
+        ]),
+      { maxAttempts: 2, baseDelayMs: 200 }
+    );
+
+    connectorTelemetryService.record({
+      requestId: req.requestId ?? "unknown-request",
+      tenantId: tenantContext.tenant.tenantId,
+      connectorName: "clickup",
+      operation: "test_sync",
+      status: "healthy",
+      responseTimeMs: Date.now() - executionStart
+    });
 
     req.requestMetadata = {
       requestType: "connector_clickup_test_sync",

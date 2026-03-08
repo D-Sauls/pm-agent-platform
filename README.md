@@ -37,3 +37,39 @@ Each mode influences report emphasis, planning guidance, and recommendation styl
 Notes:
 - Local admin login is enabled only when `NODE_ENV=development` and `ADMIN_AUTH_MODE=local`.
 - In non-development environments, admin auth strategy switches to Entra mode scaffold and local login is blocked.
+
+## Operational Readiness Notes
+- Structured logging:
+  - JSON logs with `level`, `requestId`, `tenantId`, `workflowId`, and `connectorUsed` where available.
+  - Sensitive fields (`password`, `token`, `secret`, `apiKey`, `authorization`) are redacted.
+- Request correlation:
+  - Every request gets `x-request-id` (propagated if provided, generated if missing).
+  - Error responses include `requestId`.
+- Health endpoints:
+  - `GET /health/live`
+  - `GET /health/ready`
+  - `GET /health`
+- Rate limiting:
+  - Environment-configurable limits for workflow, agent, and admin paths.
+  - Rate-limited responses return `429` with structured payload and `retry-after`.
+- Workflow and connector observability:
+  - Workflow execution telemetry captures success/failure and response time.
+  - Connector telemetry captures operation status, degraded/unhealthy events, and transitions.
+  - Admin logs endpoints expose workflow/connector failure views.
+- Safe retries:
+  - Read-only connector operations use conservative retry policy for transient failures.
+  - Auth failures are not retried.
+
+### Additional Env Vars
+- `LOG_LEVEL=debug|info|warn|error`
+- `TELEMETRY_VERBOSE=true|false`
+- `RATE_LIMIT_WINDOW_MS=60000`
+- `RATE_LIMIT_WORKFLOW_MAX=60`
+- `RATE_LIMIT_AGENT_MAX=60`
+- `RATE_LIMIT_ADMIN_MAX=120`
+
+### Production Hardening TODOs
+1. Replace in-memory telemetry/rate-limit stores with distributed backing (Redis).
+2. Export metrics to a monitoring backend (OpenTelemetry/Azure Monitor).
+3. Add connector circuit breaker for repeated provider outages.
+4. Implement Entra token validation and signed Teams webhook verification.

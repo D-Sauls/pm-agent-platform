@@ -1,5 +1,6 @@
 import type { AdminAuditLog } from "../models/AdminAuditLog.js";
 import type { AdminUser } from "../models/AdminUser.js";
+import { loggingService } from "../observability/runtime.js";
 
 // Records admin control-plane actions for traceability and governance.
 export class AdminAuditService {
@@ -17,6 +18,12 @@ export class AdminAuditService {
       timestamp: new Date().toISOString()
     };
     this.logs.push(entry);
+    loggingService.info("admin.audit", {
+      tenantId,
+      actorId: admin.id,
+      actorRole: admin.role,
+      action
+    });
   }
 
   listRecent(limit = 200): AdminAuditLog[] {

@@ -17,7 +17,12 @@ adminAuthRoutes.get("/mode", (_req, res) => {
 adminAuthRoutes.post("/login", async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: "Invalid login payload", details: parsed.error.flatten() });
+    return res.status(400).json({
+      code: "VALIDATION_ERROR",
+      message: "Invalid login payload",
+      requestId: req.requestId,
+      details: parsed.error.flatten()
+    });
   }
 
   try {
@@ -25,7 +30,7 @@ adminAuthRoutes.post("/login", async (req, res) => {
     res.json(session);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Login failed";
-    res.status(401).json({ error: message });
+    res.status(401).json({ code: "UNAUTHORIZED", message, requestId: req.requestId });
   }
 });
 

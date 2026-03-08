@@ -11,7 +11,8 @@ export type AppErrorCode =
   | "PROJECT_NOT_FOUND"
   | "WORKFLOW_EXECUTION_FAILED"
   | "UNAUTHORIZED"
-  | "VALIDATION_ERROR";
+  | "VALIDATION_ERROR"
+  | "RATE_LIMITED";
 
 export class AppError extends Error {
   constructor(

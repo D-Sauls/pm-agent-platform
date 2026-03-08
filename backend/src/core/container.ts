@@ -43,6 +43,7 @@ import { WeeklyTimeReportWorkflow } from "./services/workflows/weeklyTimeReportW
 import { WeeklyReportWorkflowV2 } from "./services/workflows/weeklyReportWorkflow.js";
 import { WorkflowRegistry } from "./services/workflows/workflowRegistry.js";
 import { WeeklyReportWorkflow } from "./workflows/WeeklyReportWorkflow.js";
+import { connectorTelemetryService, retryPolicyService } from "../observability/runtime.js";
 
 const tenantRepository = new MemoryTenantRepository();
 const licenseRepository = new MemoryLicenseRepository();
@@ -81,7 +82,9 @@ export const connectorRouterV2 = new ConnectorRouter([
 export const projectContextServiceV2 = new ProjectContextService(
   projectRepository,
   connectorRouterV2,
-  timeEntryServiceV2
+  timeEntryServiceV2,
+  retryPolicyService,
+  connectorTelemetryService
 );
 export const tenantContextServiceV2 = new TenantContextService(tenantServiceV2, licenseServiceV2);
 export const reportingEngineV2 = new ReportingEngine(new PromptEngine());

@@ -8,6 +8,8 @@ export function requestLoggingMiddleware(usageLogService: UsageLogService) {
     res.on("finish", () => {
       const tenantId = req.tenantContext?.tenant.tenantId ?? req.params.tenantId ?? "unknown-tenant";
       void usageLogService.recordWorkflowRequest({
+        requestId: req.requestId,
+        correlationId: req.correlationId,
         tenantId,
         userId: req.userContext?.userId,
         requestType: req.requestMetadata?.requestType ?? `${req.method} ${req.path}`,

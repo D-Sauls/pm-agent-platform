@@ -37,6 +37,8 @@ export interface License {
 
 export interface UsageLog {
   id: string;
+  requestId?: string;
+  correlationId?: string;
   tenantId: string;
   userId?: string;
   requestType: string;

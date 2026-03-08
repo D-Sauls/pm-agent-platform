@@ -5,6 +5,8 @@ import type { TenantContext } from "../core/models/tenantModels.js";
 declare global {
   namespace Express {
     interface Request {
+      requestId?: string;
+      correlationId?: string;
       authUser?: {
         userId: string;
         defaultTenantId?: string;
@@ -24,6 +26,7 @@ declare global {
         workflowId?: string;
         forecastType?: string;
         confidenceScore?: number;
+        warningsCount?: number;
         connectorUsed?: string | null;
         executionTimeMs?: number;
       };

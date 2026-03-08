@@ -35,12 +35,18 @@ async function adminFetch(path: string, init?: RequestInit): Promise<Response> {
 }
 
 async function parseError(response: Response, fallback: string): Promise<never> {
+  let message = fallback;
   try {
-    const body = (await response.json()) as { error?: string };
-    throw new Error(body.error ?? fallback);
+    const body = (await response.json()) as { error?: string; message?: string };
+    if (body.error) {
+      message = body.error;
+    } else if (body.message) {
+      message = body.message;
+    }
   } catch {
-    throw new Error(fallback);
+    // Keep fallback message when response body is not JSON.
   }
+  throw new Error(message);
 }
 
 export async function adminLogin(email: string, password: string): Promise<AdminSession> {
