@@ -3,11 +3,13 @@ import type { NormalizedProjectContext, Project } from "../models/projectModels.
 import type { TenantContext } from "../models/tenantModels.js";
 import type { ProjectRepository } from "../repositories/interfaces.js";
 import { ConnectorRouter } from "./ConnectorRouter.js";
+import { TimeEntryService } from "./time/TimeEntryService.js";
 
 export class ProjectContextService {
   constructor(
     private readonly projectRepository: ProjectRepository,
-    private readonly connectorRouter: ConnectorRouter
+    private readonly connectorRouter: ConnectorRouter,
+    private readonly timeEntryService?: TimeEntryService
   ) {}
 
   async getProjectContext(
@@ -30,12 +32,17 @@ export class ProjectContextService {
     project: Project
   ): Promise<NormalizedProjectContext> {
     const connector = this.connectorRouter.resolveConnector(tenantContext, project.sourceSystem);
-    const [resolvedProject, tasks, milestones, statusSummary] = await Promise.all([
-      connector.getProject(project.externalProjectId ?? project.projectId),
-      connector.getTasks(project.externalProjectId ?? project.projectId),
-      connector.getMilestones(project.externalProjectId ?? project.projectId),
-      connector.getStatus(project.externalProjectId ?? project.projectId)
+    const externalProjectId = project.externalProjectId ?? project.projectId;
+    const [resolvedProject, tasks, milestones, statusSummary, timeEntries] = await Promise.all([
+      connector.getProject(tenantContext, externalProjectId),
+      connector.getTasks(tenantContext, externalProjectId),
+      connector.getMilestones(tenantContext, externalProjectId),
+      connector.getStatus(tenantContext, externalProjectId),
+      connector.getTimeEntries(tenantContext, externalProjectId)
     ]);
+    if (this.timeEntryService && timeEntries.length > 0) {
+      await this.timeEntryService.ingest(timeEntries);
+    }
 
     return {
       project: resolvedProject ?? project,
@@ -44,7 +51,8 @@ export class ProjectContextService {
       risks: [],
       issues: [],
       dependencies: [],
-      statusSummary
+      statusSummary,
+      timeEntries
     };
   }
 
@@ -52,8 +60,8 @@ export class ProjectContextService {
     return Promise.all(
       tenantContext.enabledConnectors.map(async (sourceSystem) => {
         const connector = this.connectorRouter.resolveConnector(tenantContext, sourceSystem);
-        const status = await connector.healthCheck();
-        return { connector: status.connector, healthy: status.healthy };
+        const status = await connector.healthCheck(tenantContext);
+        return { connector: status.connectorName, healthy: status.status === "healthy" };
       })
     );
   }

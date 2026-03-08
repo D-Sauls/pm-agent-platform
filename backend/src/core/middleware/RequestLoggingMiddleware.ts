@@ -13,6 +13,7 @@ export function requestLoggingMiddleware(usageLogService: UsageLogService) {
         requestType: req.requestMetadata?.requestType ?? `${req.method} ${req.path}`,
         workflowType: req.requestMetadata?.workflowType,
         workflowId: req.requestMetadata?.workflowId,
+        forecastType: req.requestMetadata?.forecastType,
         confidenceScore: req.requestMetadata?.confidenceScore,
         connectorUsed: req.requestMetadata?.connectorUsed,
         responseTimeMs: Date.now() - start,

@@ -1,13 +1,16 @@
-import type { BaseConnector, ConnectorStatus } from "./BaseConnector.js";
+import type { BaseConnector } from "./BaseConnector.js";
+import type { ConnectorHealthResult } from "../models/connectorModels.js";
 import type { Milestone, Project, Task } from "../models/projectModels.js";
+import type { TenantContext } from "../models/tenantModels.js";
+import type { TimeEntry } from "../models/timeModels.js";
 
 class GenericStubConnector implements BaseConnector {
   constructor(public readonly sourceSystem: string) {}
 
-  async getProject(projectId: string): Promise<Project | null> {
+  async getProject(tenantContext: TenantContext, projectId: string): Promise<Project | null> {
     return {
       projectId,
-      tenantId: "tenant-acme",
+      tenantId: tenantContext.tenant.tenantId,
       sourceSystem: this.sourceSystem,
       externalProjectId: `${this.sourceSystem}-${projectId}`,
       name: `${this.sourceSystem.toUpperCase()} Project ${projectId}`,
@@ -19,7 +22,7 @@ class GenericStubConnector implements BaseConnector {
     };
   }
 
-  async getTasks(projectId: string): Promise<Task[]> {
+  async getTasks(_tenantContext: TenantContext, projectId: string): Promise<Task[]> {
     return [
       {
         taskId: `${this.sourceSystem}-${projectId}-task-1`,
@@ -42,7 +45,7 @@ class GenericStubConnector implements BaseConnector {
     ];
   }
 
-  async getMilestones(projectId: string): Promise<Milestone[]> {
+  async getMilestones(_tenantContext: TenantContext, projectId: string): Promise<Milestone[]> {
     return [
       {
         milestoneId: `${this.sourceSystem}-${projectId}-milestone-1`,
@@ -55,12 +58,38 @@ class GenericStubConnector implements BaseConnector {
     ];
   }
 
-  async getStatus(_projectId: string): Promise<string> {
+  async getStatus(_tenantContext: TenantContext, _projectId: string): Promise<string> {
     return "Amber";
   }
 
-  async healthCheck(): Promise<ConnectorStatus> {
-    return { connector: this.sourceSystem, healthy: true };
+  async getTimeEntries(
+    tenantContext: TenantContext,
+    projectId: string
+  ): Promise<TimeEntry[]> {
+    return [
+      {
+        timeEntryId: `${this.sourceSystem}-${projectId}-time-1`,
+        tenantId: tenantContext.tenant.tenantId,
+        projectId,
+        sourceSystem: this.sourceSystem,
+        userId: "stub-user-1",
+        userDisplayName: "Stub User",
+        entryDate: new Date(),
+        hours: 2,
+        billableStatus: "billable",
+        description: "Stub tracked time"
+      }
+    ];
+  }
+
+  async healthCheck(tenantContext: TenantContext): Promise<ConnectorHealthResult> {
+    return {
+      connectorName: this.sourceSystem,
+      tenantId: tenantContext.tenant.tenantId,
+      status: "healthy",
+      checkedAt: new Date(),
+      message: "Stub connector healthy"
+    };
   }
 }
 

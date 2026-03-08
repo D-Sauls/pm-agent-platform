@@ -6,6 +6,7 @@ import { tenantMiddleware } from "./middleware/TenantMiddleware.js";
 import { adminRoutes } from "./routes/admin/index.js";
 import { agentRoutes } from "./routes/agentRoutes.js";
 import { productRoutes } from "./routes/productRoutes.js";
+import { teamsRoutes } from "./routes/teamsRoutes.js";
 
 export function createApp() {
   const app = express();
@@ -14,6 +15,8 @@ export function createApp() {
   app.use(express.json());
   app.use("/api/agent", authenticateUser, tenantMiddleware, agentRoutes);
   app.use("/api", productRoutes);
+  app.use("/api/teams", teamsRoutes);
+  app.use("/api/admin", adminRoutes);
   app.use("/admin", adminRoutes);
 
   app.get("/health", (_req, res) => {

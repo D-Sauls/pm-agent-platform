@@ -8,6 +8,7 @@ export function tenantResolutionMiddleware(tenantContextService: TenantContextSe
       const tenantId =
         req.header("x-tenant-id") ??
         (req.params.tenantId || undefined) ??
+        (typeof req.query?.tenantId === "string" ? req.query.tenantId : undefined) ??
         req.userContext?.tenantIdHint ??
         (typeof req.body?.tenantId === "string" ? req.body.tenantId : undefined);
 

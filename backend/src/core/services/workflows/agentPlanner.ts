@@ -10,11 +10,66 @@ export class AgentPlanner {
   plan(message: string): PlanResult {
     const text = message.toLowerCase();
 
+    if (
+      this.hasAny(text, [
+        "monthly billing summary",
+        "billable hours this month",
+        "utilization this month",
+        "monthly billing",
+        "billing summary this month"
+      ])
+    ) {
+      return {
+        workflowId: "monthly_billing_summary",
+        confidenceScore: 0.93,
+        rationale: "Detected monthly billing summary intent"
+      };
+    }
+    if (
+      this.hasAny(text, [
+        "weekly time report",
+        "billable hours this week",
+        "team utilization this week",
+        "weekly utilization",
+        "time report this week"
+      ])
+    ) {
+      return {
+        workflowId: "weekly_time_report",
+        confidenceScore: 0.92,
+        rationale: "Detected weekly time report intent"
+      };
+    }
     if (this.hasAny(text, ["weekly report", "weekly highlight", "status report"])) {
       return {
         workflowId: "weekly_report",
         confidenceScore: 0.96,
         rationale: "Detected reporting keywords"
+      };
+    }
+    if (
+      this.hasAny(text, [
+        "forecast delivery risk",
+        "forecast project status",
+        "will this project slip",
+        "forecast team capacity",
+        "forecast billable hours",
+        "forecast project capacity",
+        "forecast team workload",
+        "show forecast for this project",
+        "forecast",
+        "slip",
+        "capacity",
+        "billable hours",
+        "workload",
+        "delivery risk",
+        "project forecast"
+      ])
+    ) {
+      return {
+        workflowId: "forecast",
+        confidenceScore: 0.88,
+        rationale: "Detected forecasting intent"
       };
     }
     if (
@@ -74,7 +129,17 @@ export class AgentPlanner {
         rationale: "Detected recommendation/advisor intent"
       };
     }
-    if (this.hasAny(text, ["project summary", "summarize project", "summary"])) {
+    if (
+      this.hasAny(text, [
+        "summarize this project",
+        "project overview",
+        "project status",
+        "project summary",
+        "executive summary",
+        "summarize project",
+        "summary"
+      ])
+    ) {
       return {
         workflowId: "project_summary",
         confidenceScore: 0.86,

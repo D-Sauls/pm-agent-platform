@@ -1,9 +1,13 @@
 import type {
   AdminAuditLogRepository,
+  ConnectorConfigRepository,
   LicenseRepository,
   ProjectRepository,
   PromptMappingRepository,
+  ResourceRepository,
   TenantRepository,
+  TimeEntryQuery,
+  TimeEntryRepository,
   UsageLogRepository
 } from "../interfaces.js";
 import type {
@@ -13,6 +17,8 @@ import type {
   UsageLog
 } from "../../models/tenantModels.js";
 import type { Project } from "../../models/projectModels.js";
+import type { Resource, TimeEntry } from "../../models/timeModels.js";
+import type { ConnectorConfig } from "../../models/connectorModels.js";
 
 export class MemoryTenantRepository implements TenantRepository {
   private data = new Map<string, Tenant>();
@@ -111,5 +117,57 @@ export class MemoryPromptMappingRepository implements PromptMappingRepository {
 
   async getDefaultPromptVersion(tenantId: string): Promise<string | null> {
     return this.data.get(tenantId) ?? null;
+  }
+}
+
+export class MemoryTimeEntryRepository implements TimeEntryRepository {
+  private data = new Map<string, TimeEntry>();
+
+  async upsertMany(entries: TimeEntry[]): Promise<void> {
+    for (const entry of entries) {
+      this.data.set(entry.timeEntryId, entry);
+    }
+  }
+
+  async list(query: TimeEntryQuery): Promise<TimeEntry[]> {
+    return Array.from(this.data.values()).filter((entry) => {
+      if (entry.tenantId !== query.tenantId) return false;
+      if (query.projectId && entry.projectId !== query.projectId) return false;
+      if (query.userId && entry.userId !== query.userId) return false;
+      if (query.startDate && entry.entryDate.getTime() < query.startDate.getTime()) return false;
+      if (query.endDate && entry.entryDate.getTime() > query.endDate.getTime()) return false;
+      return true;
+    });
+  }
+}
+
+export class MemoryResourceRepository implements ResourceRepository {
+  private data = new Map<string, Resource>();
+
+  async upsertMany(resources: Resource[]): Promise<void> {
+    for (const resource of resources) {
+      this.data.set(`${resource.tenantId}:${resource.userId}`, resource);
+    }
+  }
+
+  async listByTenant(tenantId: string): Promise<Resource[]> {
+    return Array.from(this.data.values()).filter((resource) => resource.tenantId === tenantId);
+  }
+}
+
+export class MemoryConnectorConfigRepository implements ConnectorConfigRepository {
+  private data = new Map<string, ConnectorConfig>();
+
+  async upsert(config: ConnectorConfig): Promise<ConnectorConfig> {
+    this.data.set(`${config.tenantId}:${config.connectorName}`, config);
+    return config;
+  }
+
+  async getByTenantAndName(tenantId: string, connectorName: string): Promise<ConnectorConfig | null> {
+    return this.data.get(`${tenantId}:${connectorName}`) ?? null;
+  }
+
+  async listByTenant(tenantId: string): Promise<ConnectorConfig[]> {
+    return Array.from(this.data.values()).filter((config) => config.tenantId === tenantId);
   }
 }

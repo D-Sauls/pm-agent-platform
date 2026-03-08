@@ -1,14 +1,23 @@
 import type { ChangeAssessmentResult } from "../../models/changeAssessmentModels.js";
 import type { DeliveryAdvisorResult } from "../../models/deliveryAdvisorModels.js";
+import type { ForecastWorkflowResult } from "../../models/forecastWorkflowModels.js";
 import type { NormalizedProjectContext, WeeklyReportOutput } from "../../models/projectModels.js";
+import type { ProjectSummaryResult } from "../../models/projectSummaryModels.js";
 import type { RaidExtractionResult } from "../../models/raidModels.js";
 import type { TenantContext } from "../../models/tenantModels.js";
+import type {
+  MonthlyBillingSummaryResult,
+  WeeklyTimeReportResult
+} from "../../models/timeWorkflowModels.js";
 
 export type WorkflowId =
   | "weekly_report"
   | "raid_extraction"
   | "change_assessment"
   | "delivery_advisor"
+  | "forecast"
+  | "weekly_time_report"
+  | "monthly_billing_summary"
   | "project_summary";
 
 export interface AgentExecutionContext {
@@ -29,12 +38,20 @@ export interface WorkflowResult {
     | "assessment"
     | "change_assessment"
     | "delivery_advisor"
+    | "forecast"
+    | "weekly_time_report"
+    | "monthly_billing_summary"
+    | "project_summary"
     | "advice"
     | "summary";
   data:
     | WeeklyReportOutput
     | ChangeAssessmentResult
     | DeliveryAdvisorResult
+    | ForecastWorkflowResult
+    | WeeklyTimeReportResult
+    | MonthlyBillingSummaryResult
+    | ProjectSummaryResult
     | RaidExtractionResult
     | {
         summary?: string;

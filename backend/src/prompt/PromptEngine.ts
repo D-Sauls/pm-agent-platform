@@ -2,7 +2,11 @@ import { weeklyReportPrompt } from "../../../prompts/weekly_report.js";
 import { raidExtractionPrompt } from "../../../prompts/raid_extraction.js";
 import { changeAssessmentPrompt } from "../../../prompts/change_assessment.js";
 import { deliveryAdvisorPrompt } from "../../../prompts/delivery_advisor.js";
+import { forecastExplanationPrompt } from "../../../prompts/forecast_explanation.js";
+import { monthlyBillingRecommendationsPrompt } from "../../../prompts/monthly_billing_recommendations.js";
+import { projectSummaryPrompt } from "../../../prompts/project_summary.js";
 import { planningAssistantPrompt } from "../../../prompts/planning_assistant.js";
+import { weeklyTimeRecommendationsPrompt } from "../../../prompts/weekly_time_recommendations.js";
 import { DeliveryMode } from "../../../models/entities.js";
 import { OpenAiLlmClient, type LlmClient } from "../llm/LlmClient.js";
 
@@ -11,6 +15,10 @@ export type PromptTemplateKey =
   | "raid_extraction"
   | "change_assessment"
   | "delivery_advisor"
+  | "forecast_explanation"
+  | "weekly_time_recommendations"
+  | "monthly_billing_recommendations"
+  | "project_summary"
   | "planning_assistant";
 
 const promptLibrary: Record<PromptTemplateKey, string> = {
@@ -18,6 +26,10 @@ const promptLibrary: Record<PromptTemplateKey, string> = {
   raid_extraction: raidExtractionPrompt,
   change_assessment: changeAssessmentPrompt,
   delivery_advisor: deliveryAdvisorPrompt,
+  forecast_explanation: forecastExplanationPrompt,
+  weekly_time_recommendations: weeklyTimeRecommendationsPrompt,
+  monthly_billing_recommendations: monthlyBillingRecommendationsPrompt,
+  project_summary: projectSummaryPrompt,
   planning_assistant: planningAssistantPrompt
 };
 

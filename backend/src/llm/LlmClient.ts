@@ -139,6 +139,60 @@ export class OpenAiLlmClient implements LlmClient {
         warnings: []
       });
     }
+    if (prompt.includes("Template: project_summary")) {
+      return JSON.stringify({
+        projectOverview: "Project is progressing with moderate delivery risk requiring active PM oversight.",
+        deliveryHealth: "amber",
+        progressSummary:
+          "Core workstreams are moving forward, but dependencies and blocker resolution need tighter control this week.",
+        keyAchievements: [
+          "Major integration tasks completed for current reporting cycle.",
+          "Stakeholder checkpoint completed with aligned near-term priorities."
+        ],
+        risksIssues: ["Dependency owner confirmation pending for a release-critical handoff."],
+        blockers: ["Environment access bottleneck affecting final validation tasks."],
+        upcomingMilestones: ["Readiness review in the next 5 business days."],
+        recommendedFocus: [
+          "Close top blocker with named owner and due date.",
+          "Confirm milestone readiness and unresolved dependencies in governance forum."
+        ],
+        assumptionsMade: ["Provided context reflects latest project status."],
+        warnings: []
+      });
+    }
+    if (prompt.includes("Template: forecast_explanation")) {
+      return JSON.stringify({
+        forecastExplanation:
+          "Delivery outlook indicates focused risk management is required. Capacity pressure is visible in current allocations, and billable effort trend remains moderate.",
+        recommendedActions: [
+          "Prioritize closure of highest-impact blockers and confirm mitigation owners.",
+          "Rebalance near-term workload for overloaded contributors.",
+          "Review billable effort trend against planned utilization targets."
+        ],
+        assumptionsMade: ["Forecast inputs are based on the latest synchronized project context."],
+        warnings: []
+      });
+    }
+    if (prompt.includes("Template: weekly_time_recommendations")) {
+      return JSON.stringify({
+        recommendations: [
+          "Review top non-billable drivers and reduce avoidable overhead this week.",
+          "Confirm missing time classifications to improve effort reporting quality.",
+          "Rebalance workload where utilization is above target."
+        ],
+        warnings: []
+      });
+    }
+    if (prompt.includes("Template: monthly_billing_recommendations")) {
+      return JSON.stringify({
+        recommendations: [
+          "Track billable ratio trend against monthly target and adjust assignment mix.",
+          "Address recurring non-billable categories with process improvements.",
+          "Improve time entry completeness for unknown classifications."
+        ],
+        warnings: []
+      });
+    }
 
     return "Stub LLM response";
   }

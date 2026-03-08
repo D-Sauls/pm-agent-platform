@@ -38,3 +38,27 @@ test("AgentPlanner fallback maps to project summary", () => {
   const result = planner.plan("help");
   assert.equal(result.workflowId, "project_summary");
 });
+
+test("AgentPlanner maps executive summary phrase to ProjectSummaryWorkflow", () => {
+  const planner = new AgentPlanner();
+  const result = planner.plan("prepare a project summary for leadership");
+  assert.equal(result.workflowId, "project_summary");
+});
+
+test("AgentPlanner maps forecast phrase to ForecastWorkflow", () => {
+  const planner = new AgentPlanner();
+  const result = planner.plan("forecast delivery risk");
+  assert.equal(result.workflowId, "forecast");
+});
+
+test("AgentPlanner maps weekly time report phrase", () => {
+  const planner = new AgentPlanner();
+  const result = planner.plan("show weekly time report");
+  assert.equal(result.workflowId, "weekly_time_report");
+});
+
+test("AgentPlanner maps monthly billing summary phrase", () => {
+  const planner = new AgentPlanner();
+  const result = planner.plan("show monthly billing summary");
+  assert.equal(result.workflowId, "monthly_billing_summary");
+});

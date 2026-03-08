@@ -92,6 +92,7 @@ export interface NormalizedProjectContext {
   issues: Issue[];
   dependencies: Dependency[];
   statusSummary: string;
+  timeEntries?: import("./timeModels.js").TimeEntry[];
 }
 
 export interface WeeklyReportOutput {

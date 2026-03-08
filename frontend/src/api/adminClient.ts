@@ -9,6 +9,7 @@ export interface AdminSession {
 }
 
 const ADMIN_TOKEN_KEY = "pm_agent_admin_token";
+const ADMIN_API_BASE = "/api/admin";
 
 export function getAdminToken(): string | null {
   return localStorage.getItem(ADMIN_TOKEN_KEY);
@@ -30,7 +31,7 @@ async function adminFetch(path: string, init?: RequestInit): Promise<Response> {
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  return fetch(`/admin${path}`, { ...init, headers });
+  return fetch(`${ADMIN_API_BASE}${path}`, { ...init, headers });
 }
 
 export async function adminLogin(email: string, password: string): Promise<AdminSession> {
