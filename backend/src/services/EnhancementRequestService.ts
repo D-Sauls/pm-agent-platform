@@ -23,6 +23,19 @@ export class EnhancementRequestService {
       status: "new",
       createdDate: new Date().toISOString(),
       internalNotes: ""
+    },
+    {
+      id: "enh-1002",
+      tenantId: "tenant-beta",
+      submittedBy: "ops@beta.io",
+      title: "Export usage logs to CSV",
+      description: "Support team needs downloadable usage logs by tenant.",
+      expectedBenefit: "Faster support triage and compliance reporting.",
+      urgency: "high",
+      currentWorkaround: "Copy values manually from logs page",
+      status: "reviewing",
+      createdDate: new Date(Date.now() - 2 * 24 * 3600_000).toISOString(),
+      internalNotes: "Reviewed by support admin"
     }
   ];
 
@@ -54,5 +67,9 @@ export class EnhancementRequestService {
     }
     this.requests[idx] = { ...this.requests[idx], internalNotes };
     return this.requests[idx];
+  }
+
+  countByStatus(status: EnhancementStatus): number {
+    return this.requests.filter((request) => request.status === status).length;
   }
 }

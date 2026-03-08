@@ -7,6 +7,10 @@ interface EnhancementVm {
   title: string;
   status: string;
   submittedBy: string;
+  urgency: string;
+  expectedBenefit: string;
+  currentWorkaround: string;
+  createdDate: string;
   internalNotes: string;
 }
 
@@ -48,13 +52,27 @@ export function EnhancementRequestsPage() {
           <p>
             <strong>{row.title}</strong> ({row.status}) - {row.tenantId}
           </p>
+          <p>Submitted by: {row.submittedBy}</p>
+          <p>Urgency: {row.urgency}</p>
+          <p>Expected benefit: {row.expectedBenefit}</p>
+          <p>Current workaround: {row.currentWorkaround}</p>
+          <p>Created: {row.createdDate}</p>
+          <p>Internal notes: {row.internalNotes || "none"}</p>
           <button
             onClick={async () => {
-              await patchAdminJson(`/enhancements/${row.id}/status`, { status: "under_review" });
+              await patchAdminJson(`/enhancements/${row.id}/status`, { status: "reviewing" });
               await load();
             }}
           >
-            Mark Under Review
+            Mark Reviewing
+          </button>{" "}
+          <button
+            onClick={async () => {
+              await patchAdminJson(`/enhancements/${row.id}/status`, { status: "backlog" });
+              await load();
+            }}
+          >
+            Move to Backlog
           </button>{" "}
           <button
             onClick={async () => {

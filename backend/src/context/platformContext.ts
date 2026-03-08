@@ -20,6 +20,7 @@ export const enhancementRequestService = new EnhancementRequestService();
 export const connectorHealthService = new ConnectorHealthService();
 export const adminDashboardService = new AdminDashboardService(
   tenantService,
+  adminAuditService,
   connectorHealthService,
   enhancementRequestService,
   usageLogService

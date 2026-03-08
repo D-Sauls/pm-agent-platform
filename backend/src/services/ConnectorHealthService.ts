@@ -30,4 +30,32 @@ export class ConnectorHealthService {
   countFailedSyncs(): number {
     return this.healthRows.filter((row) => row.status === "failed").length;
   }
+
+  countIssues(): number {
+    return this.healthRows.filter((row) => row.status !== "healthy").length;
+  }
+
+  runManualHealthCheck(tenantId: string, connectorName: string): ConnectorHealth {
+    const existingIndex = this.healthRows.findIndex(
+      (row) => row.tenantId === tenantId && row.connectorName === connectorName
+    );
+    const checkedAt = new Date().toISOString();
+
+    const updated: ConnectorHealth = {
+      tenantId,
+      connectorName,
+      status: "healthy",
+      lastSyncTime: checkedAt,
+      lastError: undefined,
+      lastSuccessfulResponseTime: 150
+    };
+
+    if (existingIndex >= 0) {
+      this.healthRows[existingIndex] = updated;
+    } else {
+      this.healthRows.push(updated);
+    }
+
+    return updated;
+  }
 }

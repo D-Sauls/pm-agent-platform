@@ -22,3 +22,18 @@ Each mode influences report emphasis, planning guidance, and recommendation styl
 2. Add persistent storage for normalized snapshots.
 3. Implement connector adapters against live APIs.
 4. Integrate LLM provider SDK in `PromptEngine`.
+
+## Admin Control Plane (Local Run)
+1. Start backend:
+   - `npm run dev -w backend`
+2. Start frontend:
+   - `npm run dev -w frontend`
+3. Open:
+   - `http://localhost:5173/admin`
+4. Login (development mode only):
+   - Email: `admin@local.dev`
+   - Password: `ChangeMe123!`
+
+Notes:
+- Local admin login is enabled only when `NODE_ENV=development` and `ADMIN_AUTH_MODE=local`.
+- In non-development environments, admin auth strategy switches to Entra mode scaffold and local login is blocked.

@@ -21,6 +21,7 @@ import type { AdminPageKey, AdminUserVm } from "./types";
 export function AdminApp() {
   const [currentPage, setCurrentPage] = useState<AdminPageKey>("dashboard");
   const [adminUser, setAdminUser] = useState<AdminUserVm | null>(null);
+  const [selectedTenantId, setSelectedTenantId] = useState("tenant-acme");
   const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
@@ -61,13 +62,23 @@ export function AdminApp() {
       }}
     >
       {currentPage === "dashboard" ? <DashboardPage /> : null}
-      {currentPage === "tenants" ? <TenantsListPage /> : null}
-      {currentPage === "tenantDetail" ? <TenantDetailPage /> : null}
-      {currentPage === "licenses" ? <LicenseManagementPage /> : null}
-      {currentPage === "featureFlags" ? <FeatureFlagsPage /> : null}
-      {currentPage === "prompts" ? <PromptRegistryPage /> : null}
+      {currentPage === "tenants" ? (
+        <TenantsListPage
+          adminRole={adminUser.role}
+          onOpenTenant={(tenantId) => {
+            setSelectedTenantId(tenantId);
+            setCurrentPage("tenantDetail");
+          }}
+        />
+      ) : null}
+      {currentPage === "tenantDetail" ? (
+        <TenantDetailPage tenantId={selectedTenantId} onTenantIdChange={setSelectedTenantId} />
+      ) : null}
+      {currentPage === "licenses" ? <LicenseManagementPage adminRole={adminUser.role} /> : null}
+      {currentPage === "featureFlags" ? <FeatureFlagsPage adminRole={adminUser.role} /> : null}
+      {currentPage === "prompts" ? <PromptRegistryPage adminRole={adminUser.role} /> : null}
       {currentPage === "enhancements" ? <EnhancementRequestsPage /> : null}
-      {currentPage === "connectors" ? <ConnectorHealthPage /> : null}
+      {currentPage === "connectors" ? <ConnectorHealthPage adminRole={adminUser.role} /> : null}
       {currentPage === "logs" ? <AuditLogsPage /> : null}
     </AdminLayout>
   );

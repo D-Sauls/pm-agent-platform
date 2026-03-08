@@ -3,7 +3,7 @@ import { z } from "zod";
 import { adminAuditService, enhancementRequestService } from "../../context/platformContext.js";
 import { requireAdminRole } from "../../middleware/AdminRoleMiddleware.js";
 
-const statusSchema = z.enum(["new", "under_review", "planned", "declined", "delivered"]);
+const statusSchema = z.enum(["new", "reviewing", "backlog", "planned", "rejected", "delivered"]);
 
 export const adminEnhancementRoutes = Router();
 

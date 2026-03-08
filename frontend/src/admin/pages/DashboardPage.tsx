@@ -9,6 +9,15 @@ interface DashboardSummary {
   failedConnectorSyncs: number;
   enhancementRequestsPendingReview: number;
   totalRequestsLast24Hours: number;
+  recentAdminActions: Array<{ id: string; adminEmail: string; action: string; timestamp: string }>;
+  recentWorkflowActivity: Array<{
+    tenantId: string;
+    requestType: string;
+    timestamp: string;
+    responseTime: number;
+    success?: boolean;
+  }>;
+  topUsedWorkflows: Array<{ requestType: string; count: number }>;
 }
 
 export function DashboardPage() {
@@ -45,6 +54,36 @@ export function DashboardPage() {
           </article>
         ))}
       </div>
+      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "1fr 1fr", marginTop: 16 }}>
+        <article style={{ border: "1px solid #d8d8d8", borderRadius: 8, padding: 12 }}>
+          <h3>Top Used Workflows</h3>
+          {data.topUsedWorkflows.length === 0 ? <p>No workflow activity yet.</p> : null}
+          {data.topUsedWorkflows.map((row) => (
+            <p key={row.requestType}>
+              {row.requestType}: {row.count}
+            </p>
+          ))}
+        </article>
+        <article style={{ border: "1px solid #d8d8d8", borderRadius: 8, padding: 12 }}>
+          <h3>Recent Admin Actions</h3>
+          {data.recentAdminActions.length === 0 ? <p>No admin actions yet.</p> : null}
+          {data.recentAdminActions.map((row) => (
+            <p key={row.id}>
+              [{row.timestamp}] {row.adminEmail} - {row.action}
+            </p>
+          ))}
+        </article>
+      </div>
+      <article style={{ border: "1px solid #d8d8d8", borderRadius: 8, padding: 12, marginTop: 16 }}>
+        <h3>Recent Workflow Activity</h3>
+        {data.recentWorkflowActivity.length === 0 ? <p>No workflow activity yet.</p> : null}
+        {data.recentWorkflowActivity.map((row, index) => (
+          <p key={`${row.timestamp}-${index}`}>
+            [{row.timestamp}] {row.tenantId} {row.requestType} ({row.responseTime}ms){" "}
+            {row.success === false ? "failed" : "ok"}
+          </p>
+        ))}
+      </article>
     </section>
   );
 }

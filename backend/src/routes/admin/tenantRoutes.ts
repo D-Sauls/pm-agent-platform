@@ -1,11 +1,46 @@
 import { Router } from "express";
-import { adminAuditService, tenantService, usageLogService } from "../../context/platformContext.js";
+import {
+  adminAuditService,
+  connectorHealthService,
+  featureFlagService,
+  licenseService,
+  promptRegistryService,
+  tenantService,
+  usageLogService
+} from "../../context/platformContext.js";
 import { requireAdminRole } from "../../middleware/AdminRoleMiddleware.js";
 
 export const adminTenantRoutes = Router();
 
 adminTenantRoutes.get("/", requireAdminRole(["superadmin", "supportadmin", "readonlyadmin"]), (_req, res) => {
-  res.json(tenantService.listTenants());
+  const search = typeof _req.query.search === "string" ? _req.query.search.toLowerCase().trim() : "";
+  const status = typeof _req.query.status === "string" ? _req.query.status : undefined;
+  const planType = typeof _req.query.planType === "string" ? _req.query.planType : undefined;
+
+  const rows = tenantService.listTenants().filter((tenant) => {
+    if (search && !`${tenant.tenantId} ${tenant.organizationName}`.toLowerCase().includes(search)) {
+      return false;
+    }
+    if (status && tenant.licenseStatus !== status) {
+      return false;
+    }
+    if (planType && tenant.planType !== planType) {
+      return false;
+    }
+    return true;
+  });
+
+  res.json(
+    rows.map((tenant) => {
+      const usage = usageLogService.listUsageByTenant(tenant.tenantId);
+      const lastActivity = usage[usage.length - 1]?.timestamp ?? null;
+      return {
+        ...tenant,
+        connectorStatus: connectorHealthService.listByTenant(tenant.tenantId),
+        lastActivity
+      };
+    })
+  );
 });
 
 adminTenantRoutes.get(
@@ -17,7 +52,22 @@ adminTenantRoutes.get(
       return res.status(404).json({ error: "Tenant not found" });
     }
     const usage = usageLogService.listUsageByTenant(tenant.tenantId);
-    res.json({ tenant, usageSummary: { totalRequests: usage.length } });
+    const failures = usage.filter((entry) => entry.success === false).slice(-10);
+    const lastActivity = usage[usage.length - 1]?.timestamp ?? null;
+
+    res.json({
+      tenant,
+      license: licenseService.getLicense(tenant.tenantId),
+      connectorHealth: connectorHealthService.listByTenant(tenant.tenantId),
+      featureFlags: featureFlagService.getFlagsForTenant(tenant.tenantId),
+      promptAssignments: promptRegistryService.listTenantAssignments(tenant.tenantId),
+      usageSummary: {
+        totalRequests: usage.length,
+        lastActivity,
+        topWorkflows: usageLogService.topRequestTypesByTenant(tenant.tenantId, 5)
+      },
+      recentErrors: failures
+    });
   }
 );
 
@@ -41,6 +91,9 @@ adminTenantRoutes.post("/:tenantId/reactivate", requireAdminRole(["superadmin", 
 
 adminTenantRoutes.post("/:tenantId/plan", requireAdminRole(["superadmin", "supportadmin"]), (req, res) => {
   const planType = req.body?.planType as "starter" | "professional" | "enterprise";
+  if (!["starter", "professional", "enterprise"].includes(planType)) {
+    return res.status(400).json({ error: "Invalid plan type" });
+  }
   const updated = tenantService.assignPlanType(req.params.tenantId, planType);
   if (!updated) {
     return res.status(404).json({ error: "Tenant not found" });

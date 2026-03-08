@@ -1,4 +1,10 @@
-export type EnhancementStatus = "new" | "under_review" | "planned" | "declined" | "delivered";
+export type EnhancementStatus =
+  | "new"
+  | "reviewing"
+  | "backlog"
+  | "planned"
+  | "rejected"
+  | "delivered";
 
 export interface EnhancementRequest {
   id: string;

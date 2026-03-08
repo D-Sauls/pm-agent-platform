@@ -20,13 +20,24 @@ adminFeatureFlagRoutes.get(
   "/:tenantId",
   requireAdminRole(["superadmin", "supportadmin", "readonlyadmin"]),
   (req, res) => {
-    res.json(featureFlagService.getFlagsForTenant(req.params.tenantId));
+    const tenant = featureFlagService.getFlagsForTenant(req.params.tenantId);
+    const defaults = Object.fromEntries(
+      featureFlagService.listGlobalFlags().map((flag) => [flag.key, flag.defaultEnabled])
+    );
+    const effective = {
+      ...defaults,
+      ...tenant.flags
+    };
+    res.json({ ...tenant, effectiveFlags: effective });
   }
 );
 
 adminFeatureFlagRoutes.post("/:tenantId", requireAdminRole(["superadmin"]), (req, res) => {
   const flagKey = String(req.body?.flagKey ?? "");
   const enabled = Boolean(req.body?.enabled);
+  if (!featureFlagService.listGlobalFlags().some((flag) => flag.key === flagKey)) {
+    return res.status(400).json({ error: "Unknown feature flag key" });
+  }
   const updated = featureFlagService.setFlagForTenant(req.params.tenantId, flagKey, enabled);
   tenantService.setTenantFeatureFlags(updated.tenantId, updated.flags);
   adminAuditService.record(req.adminUser!, "featureFlag.tenantUpdate", req.params.tenantId, {

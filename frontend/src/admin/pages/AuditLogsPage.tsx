@@ -5,8 +5,9 @@ interface UsageLogVm {
   tenantId: string;
   requestType: string;
   timestamp: string;
-  connectorUsed: string;
+  connectorUsed?: string;
   responseTime: number;
+  success?: boolean;
 }
 
 interface AdminAuditVm {
@@ -20,20 +21,33 @@ interface AdminAuditVm {
 export function AuditLogsPage() {
   const [usageLogs, setUsageLogs] = useState<UsageLogVm[]>([]);
   const [adminLogs, setAdminLogs] = useState<AdminAuditVm[]>([]);
+  const [tenantFilter, setTenantFilter] = useState("");
 
   useEffect(() => {
-    getAdminJson<UsageLogVm[]>("/logs/requests").then(setUsageLogs).catch(() => undefined);
-    getAdminJson<AdminAuditVm[]>("/logs/admin-actions").then(setAdminLogs).catch(() => undefined);
-  }, []);
+    const query = new URLSearchParams({ page: "1", pageSize: "50" });
+    if (tenantFilter) query.set("tenantId", tenantFilter);
+    getAdminJson<{ items: UsageLogVm[] }>(`/logs/requests?${query.toString()}`)
+      .then((result) => setUsageLogs(result.items))
+      .catch(() => undefined);
+    getAdminJson<{ items: AdminAuditVm[] }>("/logs/admin-actions?page=1&pageSize=50")
+      .then((result) => setAdminLogs(result.items))
+      .catch(() => undefined);
+  }, [tenantFilter]);
 
   return (
     <section>
       <h2>Audit / Usage Logs</h2>
+      <input
+        value={tenantFilter}
+        onChange={(event) => setTenantFilter(event.target.value)}
+        placeholder="Filter usage logs by tenant"
+      />
       <h3>Recent Requests</h3>
       {usageLogs.length === 0 ? <p>No request logs found.</p> : null}
       {usageLogs.slice(0, 20).map((row, idx) => (
         <p key={`${row.timestamp}-${idx}`}>
-          [{row.timestamp}] {row.tenantId} {row.requestType} via {row.connectorUsed} ({row.responseTime}ms)
+          [{row.timestamp}] {row.tenantId} {row.requestType} via {row.connectorUsed ?? "n/a"} (
+          {row.responseTime}ms) {row.success === false ? "failed" : "ok"}
         </p>
       ))}
 

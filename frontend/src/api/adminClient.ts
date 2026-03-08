@@ -34,13 +34,22 @@ async function adminFetch(path: string, init?: RequestInit): Promise<Response> {
   return fetch(`${ADMIN_API_BASE}${path}`, { ...init, headers });
 }
 
+async function parseError(response: Response, fallback: string): Promise<never> {
+  try {
+    const body = (await response.json()) as { error?: string };
+    throw new Error(body.error ?? fallback);
+  } catch {
+    throw new Error(fallback);
+  }
+}
+
 export async function adminLogin(email: string, password: string): Promise<AdminSession> {
   const response = await adminFetch("/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password })
   });
   if (!response.ok) {
-    throw new Error("Admin login failed");
+    return parseError(response, "Admin login failed");
   }
   return response.json();
 }
@@ -48,7 +57,7 @@ export async function adminLogin(email: string, password: string): Promise<Admin
 export async function getAuthMode(): Promise<{ mode: "local" | "entra" }> {
   const response = await adminFetch("/auth/mode");
   if (!response.ok) {
-    throw new Error("Failed to load auth mode");
+    return parseError(response, "Failed to load auth mode");
   }
   return response.json();
 }
@@ -56,7 +65,7 @@ export async function getAuthMode(): Promise<{ mode: "local" | "entra" }> {
 export async function getCurrentAdmin(): Promise<{ user: AdminSession["user"] }> {
   const response = await adminFetch("/auth/me");
   if (!response.ok) {
-    throw new Error("Admin session invalid");
+    return parseError(response, "Admin session invalid");
   }
   return response.json();
 }
@@ -64,7 +73,7 @@ export async function getCurrentAdmin(): Promise<{ user: AdminSession["user"] }>
 export async function getAdminJson<T>(path: string): Promise<T> {
   const response = await adminFetch(path);
   if (!response.ok) {
-    throw new Error(`Failed to load ${path}`);
+    return parseError(response, `Failed to load ${path}`);
   }
   return response.json();
 }
@@ -75,7 +84,7 @@ export async function postAdminJson<T>(path: string, body?: unknown): Promise<T>
     body: JSON.stringify(body ?? {})
   });
   if (!response.ok) {
-    throw new Error(`Request failed ${path}`);
+    return parseError(response, `Request failed ${path}`);
   }
   return response.json();
 }
@@ -86,7 +95,7 @@ export async function patchAdminJson<T>(path: string, body?: unknown): Promise<T
     body: JSON.stringify(body ?? {})
   });
   if (!response.ok) {
-    throw new Error(`Request failed ${path}`);
+    return parseError(response, `Request failed ${path}`);
   }
   return response.json();
 }

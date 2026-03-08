@@ -21,6 +21,12 @@ const navItems: Array<{ key: AdminPageKey; label: string }> = [
   { key: "logs", label: "Audit / Logs" }
 ];
 
+const roleAccess: Record<AdminUserVm["role"], AdminPageKey[]> = {
+  superadmin: navItems.map((item) => item.key),
+  supportadmin: ["dashboard", "tenants", "tenantDetail", "licenses", "enhancements", "connectors", "logs"],
+  readonlyadmin: ["dashboard", "tenants", "tenantDetail", "connectors", "logs"]
+};
+
 export function AdminLayout({
   currentPage,
   onNavigate,
@@ -39,7 +45,7 @@ export function AdminLayout({
     >
       <aside style={{ borderRight: "1px solid #d8d8d8", padding: 12 }}>
         <h2>Admin</h2>
-        {navItems.map((item) => (
+        {navItems.filter((item) => roleAccess[user.role].includes(item.key)).map((item) => (
           <button
             key={item.key}
             type="button"
