@@ -7,6 +7,7 @@ export type AdminPageKey =
   | "prompts"
   | "enhancements"
   | "connectors"
+  | "compliance"
   | "logs";
 
 export interface AdminUserVm {

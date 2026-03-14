@@ -53,5 +53,13 @@ export const workflowCapabilityMap: WorkflowCapability[] = [
   {
     workflowId: "knowledge_explain",
     capabilities: ["policy explanation", "lesson explanation", "knowledge guidance"]
+  },
+  {
+    workflowId: "compliance_audit",
+    capabilities: ["compliance gaps", "overdue training", "acknowledgement audit"]
+  },
+  {
+    workflowId: "requirement_status",
+    capabilities: ["user compliance status", "training status", "requirement status"]
   }
 ];

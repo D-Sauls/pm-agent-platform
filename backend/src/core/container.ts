@@ -3,6 +3,13 @@ import { stubConnectors } from "./connectors/StubConnectors.js";
 import { ClickUpConnector } from "./connectors/clickup/ClickUpConnector.js";
 import type { Project, Project as ProjectModel } from "./models/projectModels.js";
 import type { Course, LearningProgress, Policy } from "./models/knowledgeModels.js";
+import type {
+  AcknowledgementRecord,
+  ComplianceRequirement,
+  CourseVersion,
+  HROverrideRecord,
+  PolicyVersion
+} from "./models/complianceModels.js";
 import type { ConnectorConfig } from "./models/connectorModels.js";
 import type { License, Tenant } from "./models/tenantModels.js";
 import {
@@ -49,16 +56,26 @@ import { connectorTelemetryService, retryPolicyService } from "../observability/
 import { AgentPlannerService } from "./services/agentic/AgentPlannerService.js";
 import { AgenticOrchestratorService } from "./services/agentic/AgenticOrchestratorService.js";
 import { ResultSynthesisService } from "./services/agentic/ResultSynthesisService.js";
+import { AcknowledgementService } from "./services/compliance/AcknowledgementService.js";
+import { ComplianceConfigService } from "./services/compliance/ComplianceConfigService.js";
+import { ComplianceReportService } from "./services/compliance/ComplianceReportService.js";
+import { ComplianceRequirementService } from "./services/compliance/ComplianceRequirementService.js";
+import { ComplianceTrackingService } from "./services/compliance/ComplianceTrackingService.js";
+import { CourseVersionService } from "./services/compliance/CourseVersionService.js";
+import { HROverrideService } from "./services/compliance/HROverrideService.js";
+import { PolicyVersionService } from "./services/compliance/PolicyVersionService.js";
 import { CourseService } from "./services/knowledge/CourseService.js";
 import { KnowledgeIndexService } from "./services/knowledge/KnowledgeIndexService.js";
 import { LearningProgressService } from "./services/knowledge/LearningProgressService.js";
 import { LessonService } from "./services/knowledge/LessonService.js";
 import { PolicyService } from "./services/knowledge/PolicyService.js";
 import { RecommendationService } from "./services/knowledge/RecommendationService.js";
+import { ComplianceAuditWorkflow } from "./services/workflows/complianceAuditWorkflow.js";
 import { CourseRecommendationWorkflow } from "./services/workflows/courseRecommendationWorkflow.js";
 import { KnowledgeExplainWorkflow } from "./services/workflows/knowledgeExplainWorkflow.js";
 import { LearningProgressWorkflow } from "./services/workflows/learningProgressWorkflow.js";
 import { PolicyLookupWorkflow } from "./services/workflows/policyLookupWorkflow.js";
+import { RequirementStatusWorkflow } from "./services/workflows/requirementStatusWorkflow.js";
 
 const tenantRepository = new MemoryTenantRepository();
 const licenseRepository = new MemoryLicenseRepository();
@@ -111,6 +128,14 @@ export const lessonServiceV2 = new LessonService(courseServiceV2, learningProgre
 export const policyServiceV2 = new PolicyService();
 export const knowledgeIndexServiceV2 = new KnowledgeIndexService();
 export const recommendationServiceV2 = new RecommendationService(courseServiceV2, policyServiceV2);
+export const complianceConfigServiceV2 = new ComplianceConfigService();
+export const policyVersionServiceV2 = new PolicyVersionService();
+export const courseVersionServiceV2 = new CourseVersionService();
+export const acknowledgementServiceV2 = new AcknowledgementService();
+export const complianceRequirementServiceV2 = new ComplianceRequirementService();
+export const complianceTrackingServiceV2 = new ComplianceTrackingService();
+export const hrOverrideServiceV2 = new HROverrideService();
+export const complianceReportServiceV2 = new ComplianceReportService();
 export const forecastServiceV2 = new ForecastService(
   forecastEngineV2,
   usageLogServiceV2,
@@ -148,6 +173,23 @@ workflowRegistry.register(new CourseRecommendationWorkflow(recommendationService
 workflowRegistry.register(new PolicyLookupWorkflow(policyServiceV2));
 workflowRegistry.register(new LearningProgressWorkflow(courseServiceV2, learningProgressServiceV2));
 workflowRegistry.register(new KnowledgeExplainWorkflow(knowledgeIndexServiceV2, new PromptEngine()));
+workflowRegistry.register(
+  new ComplianceAuditWorkflow(
+    complianceRequirementServiceV2,
+    acknowledgementServiceV2,
+    complianceTrackingServiceV2,
+    complianceReportServiceV2,
+    complianceConfigServiceV2
+  )
+);
+workflowRegistry.register(
+  new RequirementStatusWorkflow(
+    complianceRequirementServiceV2,
+    acknowledgementServiceV2,
+    complianceTrackingServiceV2,
+    complianceConfigServiceV2
+  )
+);
 export const agentPlanner = new AgentPlanner();
 export const agentOrchestratorV2 = new AgentOrchestrator(
   agentPlanner,
@@ -314,6 +356,76 @@ void (async () => {
       completionDate: new Date()
     }
   ];
+  const policyVersions: PolicyVersion[] = [
+    {
+      id: "policy-version-finance-controls-v1",
+      policyId: "policy-finance-controls",
+      tenantId: "tenant-acme",
+      versionLabel: "v1",
+      documentReference: "sharepoint://policies/finance-controls-v1.pdf",
+      effectiveDate: new Date(),
+      publishedBy: "admin@local.dev",
+      publishedAt: new Date(),
+      isCurrent: true,
+      changeSummary: "Initial published finance controls policy."
+    }
+  ];
+  const courseVersions: CourseVersion[] = [
+    {
+      id: "course-version-finance-onboarding-v1",
+      courseId: "course-finance-onboarding",
+      tenantId: "tenant-acme",
+      versionLabel: "v1",
+      publishedBy: "admin@local.dev",
+      publishedAt: new Date(),
+      isCurrent: true,
+      changeSummary: "Initial onboarding release."
+    }
+  ];
+  const acknowledgementRecords: AcknowledgementRecord[] = [
+    {
+      id: "ack-finance-controls-user-fin-1",
+      tenantId: "tenant-acme",
+      userId: "user-fin-1",
+      subjectType: "policy",
+      subjectId: "policy-finance-controls",
+      subjectVersionId: "policy-version-finance-controls-v1",
+      acknowledgementType: "accepted",
+      status: "completed",
+      actorId: "user-fin-1",
+      actorRole: "employee",
+      recordedAt: new Date()
+    }
+  ];
+  const complianceRequirements: ComplianceRequirement[] = [
+    {
+      id: "req-security-awareness",
+      tenantId: "tenant-acme",
+      requirementType: "policy",
+      requirementId: "policy-security-awareness",
+      appliesToRoles: ["Finance Analyst"],
+      appliesToDepartments: ["Finance"],
+      mandatory: true,
+      dueInDays: 30,
+      refresherPeriodDays: 365,
+      acknowledgementRequired: true,
+      signatureRequired: false
+    },
+    {
+      id: "req-finance-onboarding",
+      tenantId: "tenant-acme",
+      requirementType: "course",
+      requirementId: "course-finance-onboarding",
+      appliesToRoles: ["Finance Analyst"],
+      appliesToDepartments: ["Finance"],
+      mandatory: true,
+      dueInDays: 14,
+      refresherPeriodDays: 365,
+      acknowledgementRequired: true,
+      signatureRequired: false
+    }
+  ];
+  const hrOverrides: HROverrideRecord[] = [];
 
   for (const tenant of tenants) {
     await tenantRepository.create(tenant);
@@ -332,9 +444,36 @@ void (async () => {
   policyServiceV2.seed(policies);
   knowledgeIndexServiceV2.indexCourses(courses);
   knowledgeIndexServiceV2.indexPolicies(policies);
+  complianceConfigServiceV2.upsertConfig("tenant-acme", {
+    acknowledgementRequiredDefault: true,
+    signatureRequiredDefault: false,
+    hrOverrideEnabled: true,
+    refresherEnabled: true,
+    defaultRefresherPeriodDays: 365,
+    readReceiptMode: "acceptance_tracking",
+    downloadPolicy: "authenticated_only",
+    allowedIpRanges: []
+  });
   for (const progress of progressEntries) {
     learningProgressServiceV2.recordProgress(progress);
   }
+  for (const version of policyVersions) {
+    policyVersionServiceV2.createVersion(version);
+  }
+  for (const version of courseVersions) {
+    courseVersionServiceV2.createVersion(version);
+  }
+  for (const requirement of complianceRequirements) {
+    complianceRequirementServiceV2.createRequirement(requirement);
+  }
+  for (const record of acknowledgementRecords) {
+    acknowledgementServiceV2.recordAcknowledgement(
+      record,
+      complianceConfigServiceV2.getConfig(record.tenantId),
+      false
+    );
+  }
+  void hrOverrides;
 })();
 
 export const repositories = {

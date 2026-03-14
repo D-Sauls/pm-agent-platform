@@ -63,6 +63,20 @@ export class DeterministicPlannerStrategy implements AgentPlannerStrategy {
     if (hasAny(["explain policy", "explain lesson", "what does this policy mean", "knowledge explain"])) {
       include("knowledge_explain");
     }
+    if (
+      hasAny([
+        "mandatory training overdue",
+        "completed security awareness",
+        "policy did this employee acknowledge",
+        "compliance gaps",
+        "compliance audit"
+      ])
+    ) {
+      include("compliance_audit");
+    }
+    if (hasAny(["requirement status", "training status", "what is overdue for this user"])) {
+      include("requirement_status");
+    }
 
     if (selected.length === 0) {
       if (text.trim().length < 6) {
@@ -130,6 +144,12 @@ export class DeterministicPlannerStrategy implements AgentPlannerStrategy {
     }
     if (workflows.includes("learning_progress")) {
       return "learning_progress";
+    }
+    if (workflows.includes("compliance_audit")) {
+      return "compliance_audit";
+    }
+    if (workflows.includes("requirement_status")) {
+      return "requirement_status";
     }
     if (text.includes("weekly")) {
       return "weekly_reporting";

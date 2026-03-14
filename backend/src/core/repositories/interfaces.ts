@@ -5,6 +5,14 @@ import type {
   UsageLog
 } from "../models/tenantModels.js";
 import type { Project } from "../models/projectModels.js";
+import type {
+  AcknowledgementRecord,
+  ComplianceConfig,
+  ComplianceRequirement,
+  CourseVersion,
+  HROverrideRecord,
+  PolicyVersion
+} from "../models/complianceModels.js";
 import type { Resource, TimeEntry } from "../models/timeModels.js";
 import type { ConnectorConfig } from "../models/connectorModels.js";
 
@@ -65,4 +73,35 @@ export interface ConnectorConfigRepository {
   upsert(config: ConnectorConfig): Promise<ConnectorConfig>;
   getByTenantAndName(tenantId: string, connectorName: string): Promise<ConnectorConfig | null>;
   listByTenant(tenantId: string): Promise<ConnectorConfig[]>;
+}
+
+export interface PolicyVersionRepository {
+  append(version: PolicyVersion): Promise<void>;
+  listByPolicy(policyId: string): Promise<PolicyVersion[]>;
+}
+
+export interface CourseVersionRepository {
+  append(version: CourseVersion): Promise<void>;
+  listByCourse(courseId: string): Promise<CourseVersion[]>;
+}
+
+export interface AcknowledgementRepository {
+  append(record: AcknowledgementRecord): Promise<void>;
+  replaceForTenant(tenantId: string, records: AcknowledgementRecord[]): Promise<void>;
+  listByTenant(tenantId: string): Promise<AcknowledgementRecord[]>;
+}
+
+export interface ComplianceRequirementRepository {
+  append(requirement: ComplianceRequirement): Promise<void>;
+  listByTenant(tenantId: string): Promise<ComplianceRequirement[]>;
+}
+
+export interface ComplianceConfigRepository {
+  upsert(tenantId: string, config: ComplianceConfig): Promise<ComplianceConfig>;
+  getByTenant(tenantId: string): Promise<ComplianceConfig | null>;
+}
+
+export interface HROverrideRepository {
+  append(record: HROverrideRecord): Promise<void>;
+  listByTenant(tenantId: string): Promise<HROverrideRecord[]>;
 }

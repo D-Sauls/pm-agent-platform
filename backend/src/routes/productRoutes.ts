@@ -3,17 +3,25 @@ import { Router } from "express";
 import { z } from "zod";
 import {
   agentOrchestratorV2,
+  acknowledgementServiceV2,
   clickUpConnectorV2,
+  complianceConfigServiceV2,
+  complianceReportServiceV2,
+  complianceRequirementServiceV2,
+  complianceTrackingServiceV2,
   connectorConfigServiceV2,
   courseServiceV2,
+  courseVersionServiceV2,
   effortSummaryServiceV2,
   forecastServiceV2,
+  hrOverrideServiceV2,
   knowledgeIndexServiceV2,
   learningProgressServiceV2,
   lessonServiceV2,
   licenseServiceV2,
   planLimitServiceV2,
   policyServiceV2,
+  policyVersionServiceV2,
   projectContextServiceV2,
   recommendationServiceV2,
   resourceServiceV2,
@@ -22,10 +30,14 @@ import {
   usageLogServiceV2,
   weeklyReportWorkflow
 } from "../core/container.js";
+import { adminAuditService } from "../context/platformContext.js";
 import { AppError } from "../core/errors/AppError.js";
 import type { NormalizedProjectContext } from "../core/models/projectModels.js";
 import type { TimeEntry } from "../core/models/timeModels.js";
+import { requireAdminAuth } from "../middleware/AdminAuthMiddleware.js";
+import { requireAdminRole } from "../middleware/AdminRoleMiddleware.js";
 import { ChangeAssessmentWorkflow } from "../core/services/workflows/changeAssessmentWorkflow.js";
+import { ComplianceAuditWorkflow } from "../core/services/workflows/complianceAuditWorkflow.js";
 import { CourseRecommendationWorkflow } from "../core/services/workflows/courseRecommendationWorkflow.js";
 import { DeliveryAdvisorWorkflow } from "../core/services/workflows/deliveryAdvisorWorkflow.js";
 import { ForecastWorkflow } from "../core/services/workflows/forecastWorkflow.js";
@@ -35,6 +47,7 @@ import { MonthlyBillingSummaryWorkflow } from "../core/services/workflows/monthl
 import { PolicyLookupWorkflow } from "../core/services/workflows/policyLookupWorkflow.js";
 import { ProjectSummaryWorkflow } from "../core/services/workflows/projectSummaryWorkflow.js";
 import { RaidExtractionWorkflow } from "../core/services/workflows/raidExtractionWorkflow.js";
+import { RequirementStatusWorkflow } from "../core/services/workflows/requirementStatusWorkflow.js";
 import { WeeklyTimeReportWorkflow } from "../core/services/workflows/weeklyTimeReportWorkflow.js";
 import { authContextMiddleware } from "../core/middleware/AuthContextMiddleware.js";
 import { licenseValidationMiddleware } from "../core/middleware/LicenseValidationMiddleware.js";
@@ -204,6 +217,64 @@ const knowledgeSearchSchema = z.object({
   query: z.string().min(1),
   role: z.string().optional()
 });
+const complianceRequirementSchema = z.object({
+  tenantId: z.string().min(1),
+  id: z.string().min(1),
+  requirementType: z.enum(["policy", "course"]),
+  requirementId: z.string().min(1),
+  appliesToRoles: z.array(z.string()).default([]),
+  appliesToDepartments: z.array(z.string()).optional(),
+  mandatory: z.boolean(),
+  dueInDays: z.number().int().positive().nullable().optional(),
+  refresherPeriodDays: z.number().int().positive().nullable().optional(),
+  acknowledgementRequired: z.boolean(),
+  signatureRequired: z.boolean()
+});
+const complianceStatusQuerySchema = z.object({
+  tenantId: z.string().min(1),
+  userId: z.string().min(1),
+  role: z.string().default("Employee"),
+  department: z.string().optional()
+});
+const acknowledgementSchema = z.object({
+  tenantId: z.string().min(1),
+  id: z.string().min(1),
+  userId: z.string().min(1),
+  subjectType: z.enum(["policy", "course", "lesson"]),
+  subjectId: z.string().min(1),
+  subjectVersionId: z.string().nullable().optional(),
+  acknowledgementType: z.enum(["opened", "completed", "accepted", "signed", "hr_override"]),
+  status: z.enum(["pending", "completed", "invalidated"]),
+  actorId: z.string().nullable().optional(),
+  actorRole: z.string().nullable().optional(),
+  ipAddress: z.string().nullable().optional(),
+  deviceInfo: z.string().nullable().optional(),
+  notes: z.string().nullable().optional()
+});
+const hrOverrideSchema = z.object({
+  tenantId: z.string().min(1),
+  id: z.string().min(1),
+  userId: z.string().min(1),
+  subjectType: z.enum(["policy", "course", "lesson"]),
+  subjectId: z.string().min(1),
+  subjectVersionId: z.string().nullable().optional(),
+  overriddenBy: z.string().min(1),
+  reason: z.string().min(1)
+});
+const policyVersionSchema = z.object({
+  tenantId: z.string().min(1),
+  id: z.string().min(1),
+  versionLabel: z.string().min(1),
+  documentReference: z.string().min(1),
+  effectiveDate: z.coerce.date(),
+  changeSummary: z.string().nullable().optional()
+});
+const courseVersionSchema = z.object({
+  tenantId: z.string().min(1),
+  id: z.string().min(1),
+  versionLabel: z.string().min(1),
+  changeSummary: z.string().nullable().optional()
+});
 
 export const productRoutes = Router();
 const resolveTenant = tenantResolutionMiddleware(tenantContextServiceV2);
@@ -229,6 +300,19 @@ const courseRecommendationWorkflow = new CourseRecommendationWorkflow(recommenda
 const policyLookupWorkflow = new PolicyLookupWorkflow(policyServiceV2);
 const learningProgressWorkflow = new LearningProgressWorkflow(courseServiceV2, learningProgressServiceV2);
 const knowledgeExplainWorkflow = new KnowledgeExplainWorkflow(knowledgeIndexServiceV2, new PromptEngine());
+const complianceAuditWorkflow = new ComplianceAuditWorkflow(
+  complianceRequirementServiceV2,
+  acknowledgementServiceV2,
+  complianceTrackingServiceV2,
+  complianceReportServiceV2,
+  complianceConfigServiceV2
+);
+const requirementStatusWorkflow = new RequirementStatusWorkflow(
+  complianceRequirementServiceV2,
+  acknowledgementServiceV2,
+  complianceTrackingServiceV2,
+  complianceConfigServiceV2
+);
 
 productRoutes.use(authContextMiddleware);
 productRoutes.use(requestLoggingMiddleware(usageLogServiceV2));
@@ -1036,6 +1120,406 @@ productRoutes.get("/learning/knowledge/search", resolveTenant, validateLicense, 
     const matches = knowledgeIndexServiceV2.search(parsed.tenantId, parsed.query, parsed.role);
     req.requestMetadata = { requestType: "learning_knowledge_search", workflowType: "knowledge_domain" };
     res.json({ tenantId: parsed.tenantId, query: parsed.query, matches });
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.post(
+  "/compliance/requirements",
+  resolveTenant,
+  validateLicense,
+  requireAdminAuth,
+  requireAdminRole(["superadmin", "supportadmin"]),
+  async (req, res, next) => {
+    try {
+      const requirement = complianceRequirementSchema.parse(req.body);
+      const created = complianceRequirementServiceV2.createRequirement(requirement);
+      adminAuditService.record(req.adminUser!, "compliance.requirement.create", requirement.tenantId, {
+        requirementId: requirement.id,
+        requirementType: requirement.requirementType
+      });
+      req.requestMetadata = { requestType: "compliance_requirement_create", workflowType: "compliance" };
+      res.status(201).json(created);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+productRoutes.get(
+  "/compliance/requirements",
+  resolveTenant,
+  validateLicense,
+  requireAdminAuth,
+  requireAdminRole(["superadmin", "supportadmin", "readonlyadmin"]),
+  async (req, res, next) => {
+    try {
+      const tenantId = String(req.query.tenantId ?? "");
+      req.requestMetadata = { requestType: "compliance_requirement_list", workflowType: "compliance" };
+      res.json({ tenantId, requirements: complianceRequirementServiceV2.listRequirements(tenantId) });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+productRoutes.get("/compliance/status", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsed = complianceStatusQuerySchema.parse(req.query);
+    const statuses = complianceTrackingServiceV2.calculateStatuses({
+      tenantId: parsed.tenantId,
+      userId: parsed.userId,
+      requirements: complianceRequirementServiceV2.resolveApplicableRequirements(
+        parsed.tenantId,
+        parsed.role,
+        parsed.department
+      ),
+      acknowledgements: acknowledgementServiceV2.findHistory({
+        tenantId: parsed.tenantId,
+        userId: parsed.userId
+      }),
+      config: complianceConfigServiceV2.getConfig(parsed.tenantId)
+    });
+    req.requestMetadata = { requestType: "compliance_status_get", workflowType: "compliance" };
+    res.json({ tenantId: parsed.tenantId, userId: parsed.userId, statuses });
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.get(
+  "/compliance/reports/tenant-summary",
+  resolveTenant,
+  validateLicense,
+  requireAdminAuth,
+  requireAdminRole(["superadmin", "supportadmin", "readonlyadmin"]),
+  async (req, res, next) => {
+    try {
+      const parsed = complianceStatusQuerySchema.parse({
+        tenantId: req.query.tenantId,
+        userId: req.query.userId ?? "tenant-scope",
+        role: req.query.role ?? "Employee",
+        department: req.query.department
+      });
+      const statuses = complianceTrackingServiceV2.calculateStatuses({
+        tenantId: parsed.tenantId,
+        userId: parsed.userId,
+        requirements: complianceRequirementServiceV2.resolveApplicableRequirements(
+          parsed.tenantId,
+          parsed.role,
+          parsed.department
+        ),
+        acknowledgements: acknowledgementServiceV2.findHistory({
+          tenantId: parsed.tenantId,
+          userId: parsed.userId
+        }),
+        config: complianceConfigServiceV2.getConfig(parsed.tenantId)
+      });
+      req.requestMetadata = { requestType: "compliance_report_tenant_summary", workflowType: "compliance" };
+      res.json(complianceReportServiceV2.tenantSummary(parsed.tenantId, statuses));
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+productRoutes.get(
+  "/compliance/reports/user-summary",
+  resolveTenant,
+  validateLicense,
+  requireAdminAuth,
+  requireAdminRole(["superadmin", "supportadmin", "readonlyadmin"]),
+  async (req, res, next) => {
+    try {
+      const parsed = complianceStatusQuerySchema.parse(req.query);
+      const statuses = complianceTrackingServiceV2.calculateStatuses({
+        tenantId: parsed.tenantId,
+        userId: parsed.userId,
+        requirements: complianceRequirementServiceV2.resolveApplicableRequirements(
+          parsed.tenantId,
+          parsed.role,
+          parsed.department
+        ),
+        acknowledgements: acknowledgementServiceV2.findHistory({
+          tenantId: parsed.tenantId,
+          userId: parsed.userId
+        }),
+        config: complianceConfigServiceV2.getConfig(parsed.tenantId)
+      });
+      req.requestMetadata = { requestType: "compliance_report_user_summary", workflowType: "compliance" };
+      res.json(complianceReportServiceV2.userSummary(parsed.tenantId, parsed.userId, statuses));
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+productRoutes.post("/compliance/acknowledgements", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsed = acknowledgementSchema.parse(req.body);
+    const signatureRequired = complianceRequirementServiceV2
+      .listRequirements(parsed.tenantId)
+      .some((requirement) => requirement.requirementId === parsed.subjectId && requirement.signatureRequired);
+    const acknowledgement = acknowledgementServiceV2.recordAcknowledgement(
+      {
+        ...parsed,
+        subjectVersionId: parsed.subjectVersionId ?? null,
+        actorId: parsed.actorId ?? null,
+        actorRole: parsed.actorRole ?? null,
+        ipAddress: parsed.ipAddress ?? null,
+        deviceInfo: parsed.deviceInfo ?? null,
+        notes: parsed.notes ?? null,
+        recordedAt: new Date()
+      },
+      complianceConfigServiceV2.getConfig(parsed.tenantId),
+      signatureRequired
+    );
+    req.requestMetadata = { requestType: "compliance_acknowledgement_create", workflowType: "compliance" };
+    res.status(201).json(acknowledgement);
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.get(
+  "/compliance/acknowledgements",
+  resolveTenant,
+  validateLicense,
+  requireAdminAuth,
+  requireAdminRole(["superadmin", "supportadmin", "readonlyadmin"]),
+  async (req, res, next) => {
+    try {
+      const tenantId = String(req.query.tenantId ?? "");
+      const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
+      const subjectType = typeof req.query.subjectType === "string" ? (req.query.subjectType as any) : undefined;
+      const subjectId = typeof req.query.subjectId === "string" ? req.query.subjectId : undefined;
+      req.requestMetadata = { requestType: "compliance_acknowledgement_list", workflowType: "compliance" };
+      res.json({
+        tenantId,
+        acknowledgements: acknowledgementServiceV2.findHistory({ tenantId, userId, subjectType, subjectId })
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+productRoutes.post(
+  "/compliance/hr-overrides",
+  resolveTenant,
+  validateLicense,
+  requireAdminAuth,
+  requireAdminRole(["superadmin", "supportadmin"]),
+  async (req, res, next) => {
+    try {
+      const parsed = hrOverrideSchema.parse(req.body);
+      const created = hrOverrideServiceV2.createOverride(
+        {
+          ...parsed,
+          subjectVersionId: parsed.subjectVersionId ?? null,
+          recordedAt: new Date()
+        },
+        complianceConfigServiceV2.getConfig(parsed.tenantId)
+      );
+      acknowledgementServiceV2.recordAcknowledgement(
+        created.acknowledgement,
+        complianceConfigServiceV2.getConfig(parsed.tenantId),
+        false
+      );
+      adminAuditService.record(req.adminUser!, "compliance.hr_override.create", parsed.tenantId, {
+        userId: parsed.userId,
+        subjectType: parsed.subjectType,
+        subjectId: parsed.subjectId
+      });
+      req.requestMetadata = { requestType: "compliance_hr_override_create", workflowType: "compliance" };
+      res.status(201).json(created);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+productRoutes.get(
+  "/compliance/hr-overrides",
+  resolveTenant,
+  validateLicense,
+  requireAdminAuth,
+  requireAdminRole(["superadmin", "supportadmin", "readonlyadmin"]),
+  async (req, res, next) => {
+    try {
+      const tenantId = String(req.query.tenantId ?? "");
+      req.requestMetadata = { requestType: "compliance_hr_override_list", workflowType: "compliance" };
+      res.json({ tenantId, overrides: hrOverrideServiceV2.listOverrides(tenantId) });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+productRoutes.post(
+  "/policies/:policyId/versions",
+  resolveTenant,
+  validateLicense,
+  requireAdminAuth,
+  requireAdminRole(["superadmin", "supportadmin"]),
+  async (req, res, next) => {
+    try {
+      const parsed = policyVersionSchema.parse(req.body);
+      const created = policyVersionServiceV2.createVersion({
+        ...parsed,
+        policyId: req.params.policyId,
+        publishedAt: new Date(),
+        publishedBy: req.adminUser?.email ?? null,
+        isCurrent: true
+      });
+      acknowledgementServiceV2.replaceAcknowledgementsForTenant(
+        parsed.tenantId,
+        policyVersionServiceV2.invalidateAcknowledgementsForPolicy(
+          req.params.policyId,
+          acknowledgementServiceV2.listByTenant(parsed.tenantId)
+        )
+      );
+      adminAuditService.record(req.adminUser!, "policy.version.publish", parsed.tenantId, {
+        policyId: req.params.policyId,
+        versionId: parsed.id
+      });
+      req.requestMetadata = { requestType: "policy_version_create", workflowType: "compliance" };
+      res.status(201).json(created);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+productRoutes.get(
+  "/policies/:policyId/versions",
+  resolveTenant,
+  validateLicense,
+  requireAdminAuth,
+  requireAdminRole(["superadmin", "supportadmin", "readonlyadmin"]),
+  async (req, res, next) => {
+    try {
+      req.requestMetadata = { requestType: "policy_version_list", workflowType: "compliance" };
+      res.json({ versions: policyVersionServiceV2.listVersionHistory(req.params.policyId) });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+productRoutes.post(
+  "/courses/:courseId/versions",
+  resolveTenant,
+  validateLicense,
+  requireAdminAuth,
+  requireAdminRole(["superadmin", "supportadmin"]),
+  async (req, res, next) => {
+    try {
+      const parsed = courseVersionSchema.parse(req.body);
+      const created = courseVersionServiceV2.createVersion({
+        ...parsed,
+        courseId: req.params.courseId,
+        tenantId: parsed.tenantId,
+        publishedAt: new Date(),
+        publishedBy: req.adminUser?.email ?? null,
+        isCurrent: true
+      });
+      adminAuditService.record(req.adminUser!, "course.version.publish", parsed.tenantId, {
+        courseId: req.params.courseId,
+        versionId: parsed.id
+      });
+      req.requestMetadata = { requestType: "course_version_create", workflowType: "compliance" };
+      res.status(201).json(created);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+productRoutes.get(
+  "/courses/:courseId/versions",
+  resolveTenant,
+  validateLicense,
+  requireAdminAuth,
+  requireAdminRole(["superadmin", "supportadmin", "readonlyadmin"]),
+  async (req, res, next) => {
+    try {
+      req.requestMetadata = { requestType: "course_version_list", workflowType: "compliance" };
+      res.json({ versions: courseVersionServiceV2.listVersionHistory(req.params.courseId) });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+productRoutes.get("/workflows/compliance-audit", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsed = complianceStatusQuerySchema.parse(req.query);
+    const tenantContext = req.tenantContext;
+    if (!tenantContext) {
+      throw new AppError("TENANT_NOT_FOUND", "Tenant context missing", 400);
+    }
+    const response = await complianceAuditWorkflow.execute({
+      tenantContext,
+      projectContext: {
+        project: {
+          projectId: "compliance-domain",
+          tenantId: parsed.tenantId,
+          sourceSystem: "compliance",
+          name: "Compliance Domain",
+          deliveryMode: "hybrid"
+        },
+        tasks: [],
+        milestones: [],
+        risks: [],
+        issues: [],
+        dependencies: [],
+        statusSummary: "Compliance"
+      },
+      userRequest: "Compliance audit",
+      workflowId: "compliance_audit",
+      timestamp: new Date(),
+      metadata: { userId: parsed.userId, role: parsed.role, department: parsed.department }
+    });
+    req.requestMetadata = { requestType: "workflow_execute", workflowType: "compliance_audit" };
+    res.json(response.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.get("/workflows/requirement-status", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsed = complianceStatusQuerySchema.parse(req.query);
+    const tenantContext = req.tenantContext;
+    if (!tenantContext) {
+      throw new AppError("TENANT_NOT_FOUND", "Tenant context missing", 400);
+    }
+    const response = await requirementStatusWorkflow.execute({
+      tenantContext,
+      projectContext: {
+        project: {
+          projectId: "compliance-domain",
+          tenantId: parsed.tenantId,
+          sourceSystem: "compliance",
+          name: "Compliance Domain",
+          deliveryMode: "hybrid"
+        },
+        tasks: [],
+        milestones: [],
+        risks: [],
+        issues: [],
+        dependencies: [],
+        statusSummary: "Compliance"
+      },
+      userRequest: "Requirement status",
+      workflowId: "requirement_status",
+      timestamp: new Date(),
+      metadata: { userId: parsed.userId, role: parsed.role, department: parsed.department }
+    });
+    req.requestMetadata = { requestType: "workflow_execute", workflowType: "requirement_status" };
+    res.json(response.data);
   } catch (error) {
     next(error);
   }

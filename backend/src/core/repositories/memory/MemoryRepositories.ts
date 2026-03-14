@@ -1,7 +1,13 @@
 import type {
   AdminAuditLogRepository,
+  AcknowledgementRepository,
+  ComplianceConfigRepository,
+  ComplianceRequirementRepository,
   ConnectorConfigRepository,
+  CourseVersionRepository,
+  HROverrideRepository,
   LicenseRepository,
+  PolicyVersionRepository,
   ProjectRepository,
   PromptMappingRepository,
   ResourceRepository,
@@ -19,6 +25,14 @@ import type {
 import type { Project } from "../../models/projectModels.js";
 import type { Resource, TimeEntry } from "../../models/timeModels.js";
 import type { ConnectorConfig } from "../../models/connectorModels.js";
+import type {
+  AcknowledgementRecord,
+  ComplianceConfig,
+  ComplianceRequirement,
+  CourseVersion,
+  HROverrideRecord,
+  PolicyVersion
+} from "../../models/complianceModels.js";
 
 export class MemoryTenantRepository implements TenantRepository {
   private data = new Map<string, Tenant>();
@@ -169,5 +183,86 @@ export class MemoryConnectorConfigRepository implements ConnectorConfigRepositor
 
   async listByTenant(tenantId: string): Promise<ConnectorConfig[]> {
     return Array.from(this.data.values()).filter((config) => config.tenantId === tenantId);
+  }
+}
+
+export class MemoryPolicyVersionRepository implements PolicyVersionRepository {
+  private data = new Map<string, PolicyVersion[]>();
+
+  async append(version: PolicyVersion): Promise<void> {
+    const existing = this.data.get(version.policyId) ?? [];
+    existing.push(version);
+    this.data.set(version.policyId, existing);
+  }
+
+  async listByPolicy(policyId: string): Promise<PolicyVersion[]> {
+    return [...(this.data.get(policyId) ?? [])];
+  }
+}
+
+export class MemoryCourseVersionRepository implements CourseVersionRepository {
+  private data = new Map<string, CourseVersion[]>();
+
+  async append(version: CourseVersion): Promise<void> {
+    const existing = this.data.get(version.courseId) ?? [];
+    existing.push(version);
+    this.data.set(version.courseId, existing);
+  }
+
+  async listByCourse(courseId: string): Promise<CourseVersion[]> {
+    return [...(this.data.get(courseId) ?? [])];
+  }
+}
+
+export class MemoryAcknowledgementRepository implements AcknowledgementRepository {
+  private data: AcknowledgementRecord[] = [];
+
+  async append(record: AcknowledgementRecord): Promise<void> {
+    this.data.push(record);
+  }
+
+  async replaceForTenant(tenantId: string, records: AcknowledgementRecord[]): Promise<void> {
+    this.data = [...this.data.filter((record) => record.tenantId !== tenantId), ...records];
+  }
+
+  async listByTenant(tenantId: string): Promise<AcknowledgementRecord[]> {
+    return this.data.filter((record) => record.tenantId === tenantId);
+  }
+}
+
+export class MemoryComplianceRequirementRepository implements ComplianceRequirementRepository {
+  private data: ComplianceRequirement[] = [];
+
+  async append(requirement: ComplianceRequirement): Promise<void> {
+    this.data.push(requirement);
+  }
+
+  async listByTenant(tenantId: string): Promise<ComplianceRequirement[]> {
+    return this.data.filter((requirement) => requirement.tenantId === tenantId);
+  }
+}
+
+export class MemoryComplianceConfigRepository implements ComplianceConfigRepository {
+  private data = new Map<string, ComplianceConfig>();
+
+  async upsert(tenantId: string, config: ComplianceConfig): Promise<ComplianceConfig> {
+    this.data.set(tenantId, config);
+    return config;
+  }
+
+  async getByTenant(tenantId: string): Promise<ComplianceConfig | null> {
+    return this.data.get(tenantId) ?? null;
+  }
+}
+
+export class MemoryHROverrideRepository implements HROverrideRepository {
+  private data: HROverrideRecord[] = [];
+
+  async append(record: HROverrideRecord): Promise<void> {
+    this.data.push(record);
+  }
+
+  async listByTenant(tenantId: string): Promise<HROverrideRecord[]> {
+    return this.data.filter((record) => record.tenantId === tenantId);
   }
 }

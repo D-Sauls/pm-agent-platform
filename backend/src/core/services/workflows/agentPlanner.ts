@@ -12,6 +12,35 @@ export class AgentPlanner {
 
     if (
       this.hasAny(text, [
+        "mandatory training overdue",
+        "completed security awareness",
+        "policy did this employee acknowledge",
+        "compliance gaps",
+        "compliance audit"
+      ])
+    ) {
+      return {
+        workflowId: "compliance_audit",
+        confidenceScore: 0.9,
+        rationale: "Detected compliance audit intent"
+      };
+    }
+    if (
+      this.hasAny(text, [
+        "requirement status",
+        "training status",
+        "compliance status for user",
+        "what is overdue for this user"
+      ])
+    ) {
+      return {
+        workflowId: "requirement_status",
+        confidenceScore: 0.89,
+        rationale: "Detected requirement status intent"
+      };
+    }
+    if (
+      this.hasAny(text, [
         "recommend courses",
         "training for role",
         "learning path",

@@ -8,6 +8,7 @@ import {
 import { AdminLayout } from "./components/AdminLayout";
 import { AuditLogsPage } from "./pages/AuditLogsPage";
 import { ConnectorHealthPage } from "./pages/ConnectorHealthPage";
+import { CompliancePage } from "./pages/CompliancePage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { EnhancementRequestsPage } from "./pages/EnhancementRequestsPage";
 import { FeatureFlagsPage } from "./pages/FeatureFlagsPage";
@@ -79,6 +80,7 @@ export function AdminApp() {
       {currentPage === "prompts" ? <PromptRegistryPage adminRole={adminUser.role} /> : null}
       {currentPage === "enhancements" ? <EnhancementRequestsPage /> : null}
       {currentPage === "connectors" ? <ConnectorHealthPage adminRole={adminUser.role} /> : null}
+      {currentPage === "compliance" ? <CompliancePage adminRole={adminUser.role} /> : null}
       {currentPage === "logs" ? <AuditLogsPage /> : null}
     </AdminLayout>
   );

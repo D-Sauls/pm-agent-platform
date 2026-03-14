@@ -18,13 +18,14 @@ const navItems: Array<{ key: AdminPageKey; label: string }> = [
   { key: "prompts", label: "Prompt Registry" },
   { key: "enhancements", label: "Enhancements" },
   { key: "connectors", label: "Connector Health" },
+  { key: "compliance", label: "Compliance" },
   { key: "logs", label: "Audit / Logs" }
 ];
 
 const roleAccess: Record<AdminUserVm["role"], AdminPageKey[]> = {
   superadmin: navItems.map((item) => item.key),
-  supportadmin: ["dashboard", "tenants", "tenantDetail", "licenses", "enhancements", "connectors", "logs"],
-  readonlyadmin: ["dashboard", "tenants", "tenantDetail", "connectors", "logs"]
+  supportadmin: ["dashboard", "tenants", "tenantDetail", "licenses", "enhancements", "connectors", "compliance", "logs"],
+  readonlyadmin: ["dashboard", "tenants", "tenantDetail", "connectors", "compliance", "logs"]
 };
 
 export function AdminLayout({

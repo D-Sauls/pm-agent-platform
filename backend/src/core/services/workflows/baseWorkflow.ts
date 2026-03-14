@@ -2,6 +2,10 @@ import type { ChangeAssessmentResult } from "../../models/changeAssessmentModels
 import type { DeliveryAdvisorResult } from "../../models/deliveryAdvisorModels.js";
 import type { ForecastWorkflowResult } from "../../models/forecastWorkflowModels.js";
 import type {
+  ComplianceAuditResult,
+  RequirementStatusResult
+} from "../../models/complianceModels.js";
+import type {
   CourseRecommendationResult,
   KnowledgeExplainResult,
   LearningProgressResult,
@@ -28,7 +32,9 @@ export type WorkflowId =
   | "course_recommendation"
   | "policy_lookup"
   | "learning_progress"
-  | "knowledge_explain";
+  | "knowledge_explain"
+  | "compliance_audit"
+  | "requirement_status";
 
 export interface AgentExecutionContext {
   tenantContext: TenantContext;
@@ -56,6 +62,8 @@ export interface WorkflowResult {
     | "policy_lookup"
     | "learning_progress"
     | "knowledge_explain"
+    | "compliance_audit"
+    | "requirement_status"
     | "advice"
     | "summary";
   data:
@@ -70,6 +78,8 @@ export interface WorkflowResult {
     | PolicyLookupResult
     | LearningProgressResult
     | KnowledgeExplainResult
+    | ComplianceAuditResult
+    | RequirementStatusResult
     | RaidExtractionResult
     | {
         summary?: string;
