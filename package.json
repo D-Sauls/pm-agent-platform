@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "dev": "echo \"Run frontend and backend dev scripts from each workspace\"",
-    "build": "npm run build -w backend && npm run build -w frontend"
+    "build": "npm run build -w backend && npm run build -w frontend",
+    "package:teams": "node ./teams/scripts/package-teams-app.mjs"
   }
 }

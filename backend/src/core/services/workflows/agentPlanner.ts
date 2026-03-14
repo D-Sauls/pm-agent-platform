@@ -12,6 +12,65 @@ export class AgentPlanner {
 
     if (
       this.hasAny(text, [
+        "recommend courses",
+        "training for role",
+        "learning path",
+        "onboarding path",
+        "recommended courses"
+      ])
+    ) {
+      return {
+        workflowId: "course_recommendation",
+        confidenceScore: 0.9,
+        rationale: "Detected course recommendation intent"
+      };
+    }
+    if (
+      this.hasAny(text, [
+        "find policy",
+        "policy lookup",
+        "policy for",
+        "required policy",
+        "compliance policy"
+      ])
+    ) {
+      return {
+        workflowId: "policy_lookup",
+        confidenceScore: 0.88,
+        rationale: "Detected policy lookup intent"
+      };
+    }
+    if (
+      this.hasAny(text, [
+        "learning progress",
+        "course progress",
+        "completion status",
+        "training progress"
+      ])
+    ) {
+      return {
+        workflowId: "learning_progress",
+        confidenceScore: 0.89,
+        rationale: "Detected learning progress intent"
+      };
+    }
+    if (
+      this.hasAny(text, [
+        "explain this policy",
+        "explain this lesson",
+        "knowledge explain",
+        "what does this policy mean",
+        "explain this course"
+      ])
+    ) {
+      return {
+        workflowId: "knowledge_explain",
+        confidenceScore: 0.82,
+        rationale: "Detected knowledge explanation intent"
+      };
+    }
+    if (
+      this.hasAny(text, [
         "monthly billing summary",
         "billable hours this month",
         "utilization this month",

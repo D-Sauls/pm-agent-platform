@@ -1,7 +1,11 @@
 import { Router } from "express";
 import { adminAuditService, usageLogService } from "../../context/platformContext.js";
 import { requireAdminRole } from "../../middleware/AdminRoleMiddleware.js";
-import { connectorTelemetryService, workflowTelemetryService } from "../../observability/runtime.js";
+import {
+  agenticTelemetryService,
+  connectorTelemetryService,
+  workflowTelemetryService
+} from "../../observability/runtime.js";
 
 export const adminLogRoutes = Router();
 
@@ -90,6 +94,19 @@ adminLogRoutes.get(
       totalFailures: recent.length,
       rateLimitedRequests: recent.filter((entry) => (entry.errorMessage ?? "").includes("429")).length,
       topErrorCategories
+    });
+  }
+);
+
+adminLogRoutes.get(
+  "/agentic-runs",
+  requireAdminRole(["superadmin", "supportadmin", "readonlyadmin"]),
+  (_req, res) => {
+    res.json({
+      items: agenticTelemetryService.recent(100),
+      failedPlans: agenticTelemetryService.failed(50),
+      topGoalTypes: agenticTelemetryService.topGoalTypes(10),
+      topWorkflowChains: agenticTelemetryService.topWorkflowChains(10)
     });
   }
 );

@@ -2,6 +2,7 @@ import { PromptEngine } from "../prompt/PromptEngine.js";
 import { stubConnectors } from "./connectors/StubConnectors.js";
 import { ClickUpConnector } from "./connectors/clickup/ClickUpConnector.js";
 import type { Project, Project as ProjectModel } from "./models/projectModels.js";
+import type { Course, LearningProgress, Policy } from "./models/knowledgeModels.js";
 import type { ConnectorConfig } from "./models/connectorModels.js";
 import type { License, Tenant } from "./models/tenantModels.js";
 import {
@@ -18,6 +19,7 @@ import {
 import { ConnectorRouter } from "./services/ConnectorRouter.js";
 import { ForecastService } from "./services/ForecastService.js";
 import { LicenseService } from "./services/LicenseService.js";
+import { PlanLimitService } from "./services/PlanLimitService.js";
 import { ProjectContextService } from "./services/ProjectContextService.js";
 import { ReportingEngine } from "./services/ReportingEngine.js";
 import { TenantContextService } from "./services/TenantContextService.js";
@@ -25,7 +27,7 @@ import { TenantService } from "./services/TenantService.js";
 import { UsageLogService } from "./services/UsageLogService.js";
 import { ForecastEngine } from "./services/forecast/ForecastEngine.js";
 import { ConnectorConfigService } from "./services/connectors/ConnectorConfigService.js";
-import { EnvSecretProvider } from "./services/connectors/SecretProvider.js";
+import { createDefaultSecretProvider } from "./services/connectors/SecretProvider.js";
 import { BillingClassificationService } from "./services/time/BillingClassificationService.js";
 import { EffortSummaryService } from "./services/time/EffortSummaryService.js";
 import { ResourceService } from "./services/time/ResourceService.js";
@@ -44,6 +46,19 @@ import { WeeklyReportWorkflowV2 } from "./services/workflows/weeklyReportWorkflo
 import { WorkflowRegistry } from "./services/workflows/workflowRegistry.js";
 import { WeeklyReportWorkflow } from "./workflows/WeeklyReportWorkflow.js";
 import { connectorTelemetryService, retryPolicyService } from "../observability/runtime.js";
+import { AgentPlannerService } from "./services/agentic/AgentPlannerService.js";
+import { AgenticOrchestratorService } from "./services/agentic/AgenticOrchestratorService.js";
+import { ResultSynthesisService } from "./services/agentic/ResultSynthesisService.js";
+import { CourseService } from "./services/knowledge/CourseService.js";
+import { KnowledgeIndexService } from "./services/knowledge/KnowledgeIndexService.js";
+import { LearningProgressService } from "./services/knowledge/LearningProgressService.js";
+import { LessonService } from "./services/knowledge/LessonService.js";
+import { PolicyService } from "./services/knowledge/PolicyService.js";
+import { RecommendationService } from "./services/knowledge/RecommendationService.js";
+import { CourseRecommendationWorkflow } from "./services/workflows/courseRecommendationWorkflow.js";
+import { KnowledgeExplainWorkflow } from "./services/workflows/knowledgeExplainWorkflow.js";
+import { LearningProgressWorkflow } from "./services/workflows/learningProgressWorkflow.js";
+import { PolicyLookupWorkflow } from "./services/workflows/policyLookupWorkflow.js";
 
 const tenantRepository = new MemoryTenantRepository();
 const licenseRepository = new MemoryLicenseRepository();
@@ -61,10 +76,11 @@ export const tenantServiceV2 = new TenantService(
   promptMappingRepository
 );
 export const licenseServiceV2 = new LicenseService(licenseRepository, tenantRepository);
+export const planLimitServiceV2 = new PlanLimitService();
 export const usageLogServiceV2 = new UsageLogService(usageLogRepository);
 export const connectorConfigServiceV2 = new ConnectorConfigService(
   connectorConfigRepository,
-  new EnvSecretProvider()
+  createDefaultSecretProvider()
 );
 export const clickUpConnectorV2 = new ClickUpConnector(connectorConfigServiceV2);
 export const billingClassificationServiceV2 = new BillingClassificationService();
@@ -89,6 +105,12 @@ export const projectContextServiceV2 = new ProjectContextService(
 export const tenantContextServiceV2 = new TenantContextService(tenantServiceV2, licenseServiceV2);
 export const reportingEngineV2 = new ReportingEngine(new PromptEngine());
 export const forecastEngineV2 = new ForecastEngine();
+export const courseServiceV2 = new CourseService();
+export const learningProgressServiceV2 = new LearningProgressService();
+export const lessonServiceV2 = new LessonService(courseServiceV2, learningProgressServiceV2);
+export const policyServiceV2 = new PolicyService();
+export const knowledgeIndexServiceV2 = new KnowledgeIndexService();
+export const recommendationServiceV2 = new RecommendationService(courseServiceV2, policyServiceV2);
 export const forecastServiceV2 = new ForecastService(
   forecastEngineV2,
   usageLogServiceV2,
@@ -122,12 +144,26 @@ workflowRegistry.register(
   )
 );
 workflowRegistry.register(new ProjectSummaryWorkflow(new PromptEngine()));
+workflowRegistry.register(new CourseRecommendationWorkflow(recommendationServiceV2));
+workflowRegistry.register(new PolicyLookupWorkflow(policyServiceV2));
+workflowRegistry.register(new LearningProgressWorkflow(courseServiceV2, learningProgressServiceV2));
+workflowRegistry.register(new KnowledgeExplainWorkflow(knowledgeIndexServiceV2, new PromptEngine()));
 export const agentPlanner = new AgentPlanner();
 export const agentOrchestratorV2 = new AgentOrchestrator(
   agentPlanner,
   workflowRegistry,
   tenantContextServiceV2,
   projectContextServiceV2
+);
+export const agentPlannerServiceV2 = new AgentPlannerService(workflowRegistry);
+export const resultSynthesisServiceV2 = new ResultSynthesisService();
+export const agenticOrchestratorServiceV2 = new AgenticOrchestratorService(
+  agentPlannerServiceV2,
+  workflowRegistry,
+  tenantContextServiceV2,
+  projectContextServiceV2,
+  projectRepository,
+  resultSynthesisServiceV2
 );
 
 void (async () => {
@@ -212,6 +248,72 @@ void (async () => {
       metadata: { note: "Set CLICKUP_API_KEY__TENANT_ACME for live calls." }
     }
   ];
+  const courses: Course[] = [
+    {
+      id: "course-finance-onboarding",
+      tenantId: "tenant-acme",
+      title: "Finance Analyst Onboarding",
+      description: "Core onboarding path for finance analysts covering controls, reporting, and compliance.",
+      tags: ["finance", "onboarding", "controls"],
+      roleTargets: ["Finance Analyst"],
+      publishedStatus: "published",
+      modules: [
+        {
+          id: "module-finance-basics",
+          courseId: "course-finance-onboarding",
+          title: "Finance Foundations",
+          lessons: [
+            {
+              id: "lesson-finance-policy",
+              moduleId: "module-finance-basics",
+              title: "Finance Policy Overview",
+              contentType: "markdown",
+              contentReference: "/content/finance-policy-overview.md",
+              estimatedDuration: 15
+            },
+            {
+              id: "lesson-quarterly-close",
+              moduleId: "module-finance-basics",
+              title: "Quarterly Close Walkthrough",
+              contentType: "video",
+              contentReference: "https://learning.example.com/quarterly-close",
+              estimatedDuration: 20
+            }
+          ]
+        }
+      ]
+    }
+  ];
+  const policies: Policy[] = [
+    {
+      id: "policy-finance-controls",
+      tenantId: "tenant-acme",
+      title: "Finance Controls Policy",
+      category: "compliance",
+      documentReference: "sharepoint://policies/finance-controls.pdf",
+      tags: ["finance", "controls", "compliance"],
+      applicableRoles: ["Finance Analyst", "Finance"]
+    },
+    {
+      id: "policy-security-awareness",
+      tenantId: "tenant-acme",
+      title: "Security Awareness Policy",
+      category: "security",
+      documentReference: "sharepoint://policies/security-awareness.pdf",
+      tags: ["security", "mandatory"],
+      applicableRoles: ["Finance Analyst", "Engineering", "Operations"]
+    }
+  ];
+  const progressEntries: LearningProgress[] = [
+    {
+      userId: "user-fin-1",
+      courseId: "course-finance-onboarding",
+      moduleId: "module-finance-basics",
+      lessonId: "lesson-finance-policy",
+      completionStatus: "completed",
+      completionDate: new Date()
+    }
+  ];
 
   for (const tenant of tenants) {
     await tenantRepository.create(tenant);
@@ -225,6 +327,13 @@ void (async () => {
   }
   for (const config of connectorConfigs) {
     await connectorConfigRepository.upsert(config);
+  }
+  courseServiceV2.seed(courses);
+  policyServiceV2.seed(policies);
+  knowledgeIndexServiceV2.indexCourses(courses);
+  knowledgeIndexServiceV2.indexPolicies(policies);
+  for (const progress of progressEntries) {
+    learningProgressServiceV2.recordProgress(progress);
   }
 })();
 

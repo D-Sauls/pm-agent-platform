@@ -24,6 +24,8 @@ declare global {
         requestType: string;
         workflowType?: string;
         workflowId?: string;
+        planId?: string;
+        goalType?: string;
         forecastType?: string;
         confidenceScore?: number;
         warningsCount?: number;

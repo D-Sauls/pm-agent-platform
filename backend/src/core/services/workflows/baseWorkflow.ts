@@ -1,6 +1,12 @@
 import type { ChangeAssessmentResult } from "../../models/changeAssessmentModels.js";
 import type { DeliveryAdvisorResult } from "../../models/deliveryAdvisorModels.js";
 import type { ForecastWorkflowResult } from "../../models/forecastWorkflowModels.js";
+import type {
+  CourseRecommendationResult,
+  KnowledgeExplainResult,
+  LearningProgressResult,
+  PolicyLookupResult
+} from "../../models/knowledgeModels.js";
 import type { NormalizedProjectContext, WeeklyReportOutput } from "../../models/projectModels.js";
 import type { ProjectSummaryResult } from "../../models/projectSummaryModels.js";
 import type { RaidExtractionResult } from "../../models/raidModels.js";
@@ -18,7 +24,11 @@ export type WorkflowId =
   | "forecast"
   | "weekly_time_report"
   | "monthly_billing_summary"
-  | "project_summary";
+  | "project_summary"
+  | "course_recommendation"
+  | "policy_lookup"
+  | "learning_progress"
+  | "knowledge_explain";
 
 export interface AgentExecutionContext {
   tenantContext: TenantContext;
@@ -42,6 +52,10 @@ export interface WorkflowResult {
     | "weekly_time_report"
     | "monthly_billing_summary"
     | "project_summary"
+    | "course_recommendation"
+    | "policy_lookup"
+    | "learning_progress"
+    | "knowledge_explain"
     | "advice"
     | "summary";
   data:
@@ -52,6 +66,10 @@ export interface WorkflowResult {
     | WeeklyTimeReportResult
     | MonthlyBillingSummaryResult
     | ProjectSummaryResult
+    | CourseRecommendationResult
+    | PolicyLookupResult
+    | LearningProgressResult
+    | KnowledgeExplainResult
     | RaidExtractionResult
     | {
         summary?: string;

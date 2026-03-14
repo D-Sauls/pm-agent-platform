@@ -5,6 +5,7 @@ export interface License {
   status: "active" | "suspended" | "trial";
   planType: PlanType;
   trialMode: boolean;
+  licenseKey?: string;
   expiryDate?: string;
   latestValidationResult: "valid" | "invalid" | "pending";
   updatedAt: string;

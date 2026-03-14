@@ -32,6 +32,8 @@ export function requestLifecycleMiddleware(
       const workflowId = req.requestMetadata?.workflowId;
       const workflowType = req.requestMetadata?.workflowType;
       const connectorUsed = req.requestMetadata?.connectorUsed ?? null;
+      const planId = req.requestMetadata?.planId;
+      const goalType = req.requestMetadata?.goalType;
       const success = res.statusCode < 400;
 
       logger.info("request.finish", {
@@ -44,6 +46,8 @@ export function requestLifecycleMiddleware(
         tenantId,
         workflowId,
         workflowType,
+        planId,
+        goalType,
         connectorUsed
       });
 

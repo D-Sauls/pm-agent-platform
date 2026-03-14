@@ -1,4 +1,5 @@
 import type { AgentExecutionResponse } from "../../core/services/workflows/agentOrchestrator.js";
+import type { AgenticExecutionResponse } from "../../core/models/agenticModels.js";
 
 interface AdaptiveCard {
   type: "AdaptiveCard";
@@ -7,9 +8,10 @@ interface AdaptiveCard {
 }
 
 export class AdaptiveCardRenderer {
-  render(execution: AgentExecutionResponse): AdaptiveCard {
+  render(execution: AgentExecutionResponse | AgenticExecutionResponse): AdaptiveCard {
     const now = new Date().toISOString();
-    const data = execution.result.data as Record<string, any>;
+    const normalized = this.normalize(execution);
+    const data = normalized.data as Record<string, any>;
     const recommendations =
       data.recommendations ??
       data.recommendedActions ??
@@ -24,14 +26,14 @@ export class AdaptiveCardRenderer {
       body: [
         {
           type: "TextBlock",
-          text: this.titleFor(execution.workflowId),
+          text: this.titleFor(normalized.workflowId),
           weight: "Bolder",
           size: "Medium"
         },
         {
           type: "FactSet",
           facts: [
-            { title: "Workflow", value: execution.workflowId },
+            { title: "Workflow", value: normalized.workflowId },
             ...metrics,
             { title: "Generated", value: now }
           ]
@@ -53,6 +55,28 @@ export class AdaptiveCardRenderer {
     };
   }
 
+  private normalize(execution: AgentExecutionResponse | AgenticExecutionResponse): {
+    workflowId: string;
+    data: Record<string, unknown>;
+  } {
+    if ("result" in execution) {
+      return {
+        workflowId: execution.workflowId,
+        data: execution.result.data as Record<string, unknown>
+      };
+    }
+    return {
+      workflowId: "agentic_goal",
+      data: {
+        synthesizedSummary: execution.response.synthesizedSummary,
+        keyFindings: execution.response.keyFindings,
+        recommendations: execution.response.recommendedActions,
+        warnings: execution.response.warnings,
+        workflowsExecuted: execution.response.workflowsExecuted
+      }
+    };
+  }
+
   private titleFor(workflowId: string): string {
     const titles: Record<string, string> = {
       weekly_report: "Weekly Report",
@@ -63,6 +87,8 @@ export class AdaptiveCardRenderer {
       forecast: "Forecast",
       weekly_time_report: "Weekly Time Report",
       monthly_billing_summary: "Monthly Billing Summary"
+      ,
+      agentic_goal: "Agentic Goal Response"
     };
     return titles[workflowId] ?? "PM Agent Result";
   }

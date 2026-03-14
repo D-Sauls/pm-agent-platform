@@ -2,7 +2,11 @@ import type { Tenant } from "../models/Tenant.js";
 import type { License } from "../models/License.js";
 import type { AdminAuditLog } from "../models/AdminAuditLog.js";
 import type { UsageLog } from "../models/UsageLog.js";
-import { connectorTelemetryService, workflowTelemetryService } from "../observability/runtime.js";
+import {
+  agenticTelemetryService,
+  connectorTelemetryService,
+  workflowTelemetryService
+} from "../observability/runtime.js";
 import { AdminAuditService } from "./AdminAuditService.js";
 import { ConnectorHealthService } from "./ConnectorHealthService.js";
 import { EnhancementRequestService } from "./EnhancementRequestService.js";
@@ -34,6 +38,14 @@ export interface DashboardSummary {
     errorCode?: string;
     timestamp: string;
   }>;
+  recentAgenticRuns: Array<{
+    planId: string;
+    goalType: string;
+    workflowsSelected: string[];
+    success: boolean;
+    timestamp: string;
+  }>;
+  topAgenticGoalTypes: Array<{ goalType: string; count: number }>;
 }
 
 // Aggregates operational summary cards for the admin dashboard.
@@ -76,7 +88,15 @@ export class AdminDashboardService {
         workflowType: entry.workflowType,
         errorCode: entry.errorCode,
         timestamp: entry.timestamp
-      }))
+      })),
+      recentAgenticRuns: agenticTelemetryService.recent(10).map((run) => ({
+        planId: run.planId,
+        goalType: run.goalType,
+        workflowsSelected: run.workflowsSelected,
+        success: run.success,
+        timestamp: run.timestamp
+      })),
+      topAgenticGoalTypes: agenticTelemetryService.topGoalTypes(5)
     };
   }
 

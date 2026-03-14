@@ -5,10 +5,17 @@ import {
   agentOrchestratorV2,
   clickUpConnectorV2,
   connectorConfigServiceV2,
+  courseServiceV2,
   effortSummaryServiceV2,
   forecastServiceV2,
+  knowledgeIndexServiceV2,
+  learningProgressServiceV2,
+  lessonServiceV2,
   licenseServiceV2,
+  planLimitServiceV2,
+  policyServiceV2,
   projectContextServiceV2,
+  recommendationServiceV2,
   resourceServiceV2,
   tenantContextServiceV2,
   timeEntryServiceV2,
@@ -19,9 +26,13 @@ import { AppError } from "../core/errors/AppError.js";
 import type { NormalizedProjectContext } from "../core/models/projectModels.js";
 import type { TimeEntry } from "../core/models/timeModels.js";
 import { ChangeAssessmentWorkflow } from "../core/services/workflows/changeAssessmentWorkflow.js";
+import { CourseRecommendationWorkflow } from "../core/services/workflows/courseRecommendationWorkflow.js";
 import { DeliveryAdvisorWorkflow } from "../core/services/workflows/deliveryAdvisorWorkflow.js";
 import { ForecastWorkflow } from "../core/services/workflows/forecastWorkflow.js";
+import { KnowledgeExplainWorkflow } from "../core/services/workflows/knowledgeExplainWorkflow.js";
+import { LearningProgressWorkflow } from "../core/services/workflows/learningProgressWorkflow.js";
 import { MonthlyBillingSummaryWorkflow } from "../core/services/workflows/monthlyBillingSummaryWorkflow.js";
+import { PolicyLookupWorkflow } from "../core/services/workflows/policyLookupWorkflow.js";
 import { ProjectSummaryWorkflow } from "../core/services/workflows/projectSummaryWorkflow.js";
 import { RaidExtractionWorkflow } from "../core/services/workflows/raidExtractionWorkflow.js";
 import { WeeklyTimeReportWorkflow } from "../core/services/workflows/weeklyTimeReportWorkflow.js";
@@ -135,10 +146,68 @@ const monthlyBillingSummaryRequestSchema = z.object({
   month: z.number().int().min(1).max(12).optional(),
   year: z.number().int().min(2000).max(2100).optional()
 });
+const createCourseRequestSchema = z.object({
+  tenantId: z.string().min(1),
+  id: z.string().min(1),
+  title: z.string().min(1),
+  description: z.string().min(1),
+  tags: z.array(z.string()).default([]),
+  roleTargets: z.array(z.string()).default([]),
+  modules: z.array(
+    z.object({
+      id: z.string().min(1),
+      courseId: z.string().min(1),
+      title: z.string().min(1),
+      lessons: z.array(
+        z.object({
+          id: z.string().min(1),
+          moduleId: z.string().min(1),
+          title: z.string().min(1),
+          contentType: z.enum(["video", "markdown", "pdf", "external_reference"]),
+          contentReference: z.string().min(1),
+          estimatedDuration: z.number().int().positive()
+        })
+      )
+    })
+  ),
+  publishedStatus: z.enum(["draft", "published"]).optional()
+});
+const policyRequestSchema = z.object({
+  tenantId: z.string().min(1),
+  id: z.string().min(1),
+  title: z.string().min(1),
+  category: z.string().min(1),
+  documentReference: z.string().min(1),
+  tags: z.array(z.string()).default([]),
+  applicableRoles: z.array(z.string()).default([])
+});
+const recommendationRequestSchema = z.object({
+  tenantId: z.string().min(1),
+  role: z.string().min(1),
+  department: z.string().optional()
+});
+const progressTrackSchema = z.object({
+  tenantId: z.string().min(1),
+  userId: z.string().min(1),
+  courseId: z.string().min(1),
+  moduleId: z.string().min(1),
+  lessonId: z.string().min(1),
+  completionStatus: z.enum(["not_started", "in_progress", "completed"])
+});
+const progressLookupSchema = z.object({
+  tenantId: z.string().min(1),
+  userId: z.string().min(1),
+  courseId: z.string().min(1)
+});
+const knowledgeSearchSchema = z.object({
+  tenantId: z.string().min(1),
+  query: z.string().min(1),
+  role: z.string().optional()
+});
 
 export const productRoutes = Router();
 const resolveTenant = tenantResolutionMiddleware(tenantContextServiceV2);
-const validateLicense = licenseValidationMiddleware(licenseServiceV2);
+const validateLicense = licenseValidationMiddleware(licenseServiceV2, planLimitServiceV2);
 const raidWorkflow = new RaidExtractionWorkflow(new PromptEngine());
 const changeWorkflow = new ChangeAssessmentWorkflow(new PromptEngine());
 const deliveryWorkflow = new DeliveryAdvisorWorkflow(new PromptEngine());
@@ -156,6 +225,10 @@ const monthlyBillingWorkflow = new MonthlyBillingSummaryWorkflow(
   effortSummaryServiceV2,
   new PromptEngine()
 );
+const courseRecommendationWorkflow = new CourseRecommendationWorkflow(recommendationServiceV2);
+const policyLookupWorkflow = new PolicyLookupWorkflow(policyServiceV2);
+const learningProgressWorkflow = new LearningProgressWorkflow(courseServiceV2, learningProgressServiceV2);
+const knowledgeExplainWorkflow = new KnowledgeExplainWorkflow(knowledgeIndexServiceV2, new PromptEngine());
 
 productRoutes.use(authContextMiddleware);
 productRoutes.use(requestLoggingMiddleware(usageLogServiceV2));
@@ -639,6 +712,177 @@ productRoutes.post("/workflows/monthly-billing-summary", resolveTenant, validate
   }
 });
 
+productRoutes.post("/workflows/course-recommendation", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsed = recommendationRequestSchema.parse(req.body);
+    const tenantContext = req.tenantContext;
+    if (!tenantContext) {
+      throw new AppError("TENANT_NOT_FOUND", "Tenant context missing", 400);
+    }
+
+    const response = await courseRecommendationWorkflow.execute({
+      tenantContext,
+      projectContext: {
+        project: {
+          projectId: "learning-domain",
+          tenantId: tenantContext.tenant.tenantId,
+          sourceSystem: "knowledge",
+          name: "Learning Domain",
+          deliveryMode: "hybrid"
+        },
+        tasks: [],
+        milestones: [],
+        risks: [],
+        issues: [],
+        dependencies: [],
+        statusSummary: "Knowledge"
+      },
+      userRequest: `Recommend courses for ${parsed.role}`,
+      workflowId: "course_recommendation",
+      timestamp: new Date(),
+      metadata: { role: parsed.role, department: parsed.department }
+    });
+
+    req.requestMetadata = {
+      requestType: "workflow_execute",
+      workflowType: "course_recommendation",
+      workflowId: "course_recommendation"
+    };
+    res.json(response.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.post("/workflows/policy-lookup", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsed = knowledgeSearchSchema.extend({
+      category: z.string().optional(),
+      tag: z.string().optional()
+    }).parse(req.body);
+    const tenantContext = req.tenantContext;
+    if (!tenantContext) {
+      throw new AppError("TENANT_NOT_FOUND", "Tenant context missing", 400);
+    }
+
+    const response = await policyLookupWorkflow.execute({
+      tenantContext,
+      projectContext: {
+        project: {
+          projectId: "policy-domain",
+          tenantId: tenantContext.tenant.tenantId,
+          sourceSystem: "knowledge",
+          name: "Policy Domain",
+          deliveryMode: "hybrid"
+        },
+        tasks: [],
+        milestones: [],
+        risks: [],
+        issues: [],
+        dependencies: [],
+        statusSummary: "Knowledge"
+      },
+      userRequest: parsed.query,
+      workflowId: "policy_lookup",
+      timestamp: new Date(),
+      metadata: { role: parsed.role, category: parsed.category, tag: parsed.tag }
+    });
+
+    req.requestMetadata = {
+      requestType: "workflow_execute",
+      workflowType: "policy_lookup",
+      workflowId: "policy_lookup"
+    };
+    res.json(response.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.post("/workflows/learning-progress", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsed = progressLookupSchema.parse(req.body);
+    const tenantContext = req.tenantContext;
+    if (!tenantContext) {
+      throw new AppError("TENANT_NOT_FOUND", "Tenant context missing", 400);
+    }
+
+    const response = await learningProgressWorkflow.execute({
+      tenantContext,
+      projectContext: {
+        project: {
+          projectId: "progress-domain",
+          tenantId: tenantContext.tenant.tenantId,
+          sourceSystem: "knowledge",
+          name: "Learning Progress Domain",
+          deliveryMode: "hybrid"
+        },
+        tasks: [],
+        milestones: [],
+        risks: [],
+        issues: [],
+        dependencies: [],
+        statusSummary: "Knowledge"
+      },
+      userRequest: `Show progress for ${parsed.courseId}`,
+      workflowId: "learning_progress",
+      timestamp: new Date(),
+      metadata: { userId: parsed.userId, courseId: parsed.courseId }
+    });
+
+    req.requestMetadata = {
+      requestType: "workflow_execute",
+      workflowType: "learning_progress",
+      workflowId: "learning_progress"
+    };
+    res.json(response.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.post("/workflows/knowledge-explain", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsed = knowledgeSearchSchema.parse(req.body);
+    const tenantContext = req.tenantContext;
+    if (!tenantContext) {
+      throw new AppError("TENANT_NOT_FOUND", "Tenant context missing", 400);
+    }
+
+    const response = await knowledgeExplainWorkflow.execute({
+      tenantContext,
+      projectContext: {
+        project: {
+          projectId: "knowledge-domain",
+          tenantId: tenantContext.tenant.tenantId,
+          sourceSystem: "knowledge",
+          name: "Knowledge Domain",
+          deliveryMode: "hybrid"
+        },
+        tasks: [],
+        milestones: [],
+        risks: [],
+        issues: [],
+        dependencies: [],
+        statusSummary: "Knowledge"
+      },
+      userRequest: parsed.query,
+      workflowId: "knowledge_explain",
+      timestamp: new Date(),
+      metadata: { role: parsed.role }
+    });
+
+    req.requestMetadata = {
+      requestType: "workflow_execute",
+      workflowType: "knowledge_explain",
+      workflowId: "knowledge_explain"
+    };
+    res.json(response.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
 productRoutes.post("/agent/execute", resolveTenant, validateLicense, async (req, res, next) => {
   try {
     const parsed = agentExecuteRequestSchema.parse(req.body);
@@ -653,6 +897,145 @@ productRoutes.post("/agent/execute", resolveTenant, validateLicense, async (req,
       executionTimeMs: Date.now() - executionStart
     };
     res.json(response);
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.post("/learning/courses", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsed = createCourseRequestSchema.parse(req.body);
+    const course = courseServiceV2.createCourse(parsed);
+    knowledgeIndexServiceV2.indexCourses([course]);
+    req.requestMetadata = { requestType: "learning_course_create", workflowType: "knowledge_domain" };
+    res.status(201).json(course);
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.get("/learning/courses", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const tenantId = String(req.query.tenantId ?? "");
+    const publishedOnly = String(req.query.publishedOnly ?? "true") !== "false";
+    const courses = courseServiceV2.getCourseCatalog(tenantId, publishedOnly);
+    req.requestMetadata = { requestType: "learning_courses_list", workflowType: "knowledge_domain" };
+    res.json({ tenantId, courses });
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.get("/learning/courses/:courseId", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const tenantId = String(req.query.tenantId ?? req.params.tenantId ?? req.body?.tenantId ?? "");
+    const course = courseServiceV2.getCourseById(tenantId, req.params.courseId);
+    req.requestMetadata = { requestType: "learning_course_get", workflowType: "knowledge_domain" };
+    res.json(course);
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.post("/learning/courses/:courseId/publish", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const tenantId = String(req.body?.tenantId ?? "");
+    const course = courseServiceV2.publishCourse(tenantId, req.params.courseId);
+    req.requestMetadata = { requestType: "learning_course_publish", workflowType: "knowledge_domain" };
+    res.json(course);
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.get("/learning/lessons/:lessonId", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const tenantId = String(req.query.tenantId ?? "");
+    const lesson = lessonServiceV2.getLesson(tenantId, req.params.lessonId);
+    req.requestMetadata = { requestType: "learning_lesson_get", workflowType: "knowledge_domain" };
+    res.json(lesson);
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.post("/learning/progress", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsed = progressTrackSchema.parse(req.body);
+    const progress = lessonServiceV2.trackLessonProgress({
+      userId: parsed.userId,
+      courseId: parsed.courseId,
+      moduleId: parsed.moduleId,
+      lessonId: parsed.lessonId,
+      completionStatus: parsed.completionStatus
+    });
+    req.requestMetadata = { requestType: "learning_progress_track", workflowType: "knowledge_domain" };
+    res.status(201).json(progress);
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.get("/learning/progress", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsed = progressLookupSchema.parse(req.query);
+    const course = courseServiceV2.getCourseById(parsed.tenantId, parsed.courseId);
+    const progress = learningProgressServiceV2.calculateCourseProgress(parsed.userId, course);
+    req.requestMetadata = { requestType: "learning_progress_get", workflowType: "knowledge_domain" };
+    res.json({ userId: parsed.userId, courseId: parsed.courseId, ...progress });
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.post("/learning/policies", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsed = policyRequestSchema.parse(req.body);
+    const policy = policyServiceV2.createPolicy(parsed);
+    knowledgeIndexServiceV2.indexPolicies([policy]);
+    req.requestMetadata = { requestType: "learning_policy_create", workflowType: "knowledge_domain" };
+    res.status(201).json(policy);
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.get("/learning/policies", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const tenantId = String(req.query.tenantId ?? "");
+    const category = typeof req.query.category === "string" ? req.query.category : undefined;
+    const tag = typeof req.query.tag === "string" ? req.query.tag : undefined;
+    const role = typeof req.query.role === "string" ? req.query.role : undefined;
+    const query = typeof req.query.query === "string" ? req.query.query : undefined;
+    const policies = policyServiceV2.lookupPolicies(tenantId, { category, tag, role, query });
+    req.requestMetadata = { requestType: "learning_policy_list", workflowType: "knowledge_domain" };
+    res.json({ tenantId, policies });
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.get("/learning/recommendations", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsed = recommendationRequestSchema.parse(req.query);
+    const recommendations = recommendationServiceV2.recommendForRole(
+      parsed.tenantId,
+      parsed.role,
+      parsed.department
+    );
+    req.requestMetadata = { requestType: "learning_recommendations_get", workflowType: "knowledge_domain" };
+    res.json({ tenantId: parsed.tenantId, role: parsed.role, ...recommendations });
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.get("/learning/knowledge/search", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsed = knowledgeSearchSchema.parse(req.query);
+    const matches = knowledgeIndexServiceV2.search(parsed.tenantId, parsed.query, parsed.role);
+    req.requestMetadata = { requestType: "learning_knowledge_search", workflowType: "knowledge_domain" };
+    res.json({ tenantId: parsed.tenantId, query: parsed.query, matches });
   } catch (error) {
     next(error);
   }

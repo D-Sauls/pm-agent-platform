@@ -193,6 +193,14 @@ export class OpenAiLlmClient implements LlmClient {
         warnings: []
       });
     }
+    if (prompt.includes("Template: knowledge_explain")) {
+      return JSON.stringify({
+        explanation:
+          "The matched knowledge items focus on onboarding and policy compliance for the requested role. Review the listed courses first, then confirm the required policies are acknowledged.",
+        assumptionsMade: ["Knowledge explanation generated from indexed metadata rather than full document text."],
+        warnings: []
+      });
+    }
 
     return "Stub LLM response";
   }

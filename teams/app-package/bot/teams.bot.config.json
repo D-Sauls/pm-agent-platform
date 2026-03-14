@@ -1,0 +1,14 @@
+{
+  "botName": "pm-agent-bot",
+  "description": "Microsoft Teams bot configuration for the Project Management Agent platform.",
+  "botFrameworkEndpoint": "https://${TEAMS_BOT_HOST}/api/teams/messages",
+  "appId": "${TEAMS_BOT_APP_ID}",
+  "appPassword": "${TEAMS_BOT_APP_PASSWORD}",
+  "tenantMapEnvVar": "TEAMS_TENANT_MAP",
+  "appDomain": "${TEAMS_APP_DOMAIN}",
+  "localDev": {
+    "frontendUrl": "http://localhost:5173",
+    "backendUrl": "http://localhost:4000",
+    "suggestedTunnelUrl": "https://${NGROK_SUBDOMAIN}.ngrok-free.app"
+  }
+}

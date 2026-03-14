@@ -5,12 +5,51 @@ import {
   featureFlagService,
   licenseService,
   promptRegistryService,
+  tenantProvisioningService,
   tenantService,
   usageLogService
 } from "../../context/platformContext.js";
 import { requireAdminRole } from "../../middleware/AdminRoleMiddleware.js";
 
 export const adminTenantRoutes = Router();
+
+adminTenantRoutes.post("/provision", requireAdminRole(["superadmin", "supportadmin"]), (req, res) => {
+  const planType = req.body?.planType as "starter" | "professional" | "enterprise";
+  if (!["starter", "professional", "enterprise"].includes(planType)) {
+    return res.status(400).json({ error: "Invalid plan type" });
+  }
+
+  const tenantId = String(req.body?.tenantId ?? "").trim();
+  const organizationName = String(req.body?.organizationName ?? "").trim();
+  const enabledConnectors = Array.isArray(req.body?.enabledConnectors)
+    ? req.body.enabledConnectors.filter((value: unknown): value is string => typeof value === "string")
+    : [];
+
+  if (!tenantId || !organizationName) {
+    return res.status(400).json({ error: "tenantId and organizationName are required" });
+  }
+
+  try {
+    const provisioned = tenantProvisioningService.provisionTenant({
+      tenantId,
+      organizationName,
+      planType,
+      enabledConnectors,
+      primaryConnector: typeof req.body?.primaryConnector === "string" ? req.body.primaryConnector : undefined,
+      trialMode: Boolean(req.body?.trialMode)
+    });
+
+    adminAuditService.record(req.adminUser!, "tenant.provision", tenantId, {
+      planType,
+      enabledConnectors,
+      trialMode: Boolean(req.body?.trialMode)
+    });
+    res.status(201).json(provisioned);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to provision tenant";
+    res.status(409).json({ error: message });
+  }
+});
 
 adminTenantRoutes.get("/", requireAdminRole(["superadmin", "supportadmin", "readonlyadmin"]), (_req, res) => {
   const search = typeof _req.query.search === "string" ? _req.query.search.toLowerCase().trim() : "";

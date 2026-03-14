@@ -2,13 +2,13 @@
   "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
   "manifestVersion": "1.16",
   "version": "1.0.0",
-  "id": "00000000-0000-0000-0000-000000000001",
+  "id": "${{TEAMS_APP_ID}}",
   "packageName": "com.pmagent.platform",
   "developer": {
     "name": "PM Agent Platform",
-    "websiteUrl": "https://localhost",
-    "privacyUrl": "https://localhost/privacy",
-    "termsOfUseUrl": "https://localhost/terms"
+    "websiteUrl": "https://localhost:5173",
+    "privacyUrl": "https://localhost:5173/privacy",
+    "termsOfUseUrl": "https://localhost:5173/terms"
   },
   "icons": {
     "color": "color.png",
@@ -23,9 +23,27 @@
     "full": "Interact with PM Agent workflows in Microsoft Teams to generate reports, extract RAID, assess changes, forecast delivery, and summarize time/billing."
   },
   "accentColor": "#2b579a",
+  "defaultInstallScope": "personal",
+  "staticTabs": [
+    {
+      "entityId": "pm-agent-home",
+      "name": "PM Agent",
+      "contentUrl": "https://${{TEAMS_APP_DOMAIN}}",
+      "websiteUrl": "https://${{TEAMS_APP_DOMAIN}}",
+      "scopes": ["personal"]
+    },
+    {
+      "entityId": "pm-agent-admin",
+      "name": "Admin Control Plane",
+      "contentUrl": "https://${{TEAMS_APP_DOMAIN}}/admin",
+      "websiteUrl": "https://${{TEAMS_APP_DOMAIN}}/admin",
+      "scopes": ["personal"]
+    }
+  ],
   "bots": [
     {
       "botId": "${{TEAMS_BOT_APP_ID}}",
+      "needsChannelSelector": false,
       "scopes": ["personal", "team", "groupchat"],
       "supportsFiles": false,
       "isNotificationOnly": false,
@@ -43,6 +61,20 @@
       ]
     }
   ],
+  "authorization": {
+    "permissions": {
+      "resourceSpecific": [
+        {
+          "name": "TeamsActivity.Send.User",
+          "type": "Application"
+        }
+      ]
+    }
+  },
   "permissions": ["identity", "messageTeamMembers"],
-  "validDomains": ["localhost", "127.0.0.1"]
+  "validDomains": ["localhost", "127.0.0.1", "${{TEAMS_APP_DOMAIN}}"],
+  "webApplicationInfo": {
+    "id": "${{TEAMS_BOT_APP_ID}}",
+    "resource": "api://${{TEAMS_BOT_APP_ID}}"
+  }
 }

@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import type { UsageLogService } from "../../core/services/UsageLogService.js";
+import type { AgenticExecutionResponse } from "../../core/models/agenticModels.js";
 import type { AgentExecutor, TeamsActivity } from "./types.js";
 import { AdaptiveCardRenderer } from "./AdaptiveCardRenderer.js";
 import { TeamsAuthService } from "./TeamsAuthService.js";
@@ -26,25 +27,36 @@ export class TeamsBotController {
 
     try {
       const route = await this.messageRouter.route(user.platformTenantId, activity);
-      const execution = await this.agentExecutor.execute({
-        tenantId: route.tenantId,
-        projectId: route.projectId,
-        message: route.message,
-        metadata: {
-          ...(route.metadata ?? {}),
-          teamsTenantId: user.teamsTenantId,
-          teamsUserId: user.teamsUserId
-        }
-      });
+      const metadata = {
+        ...(route.metadata ?? {}),
+        teamsTenantId: user.teamsTenantId,
+        teamsUserId: user.teamsUserId
+      };
+      const useGoalExecution = this.shouldUseGoalExecution(route.message);
+      const execution = useGoalExecution && this.agentExecutor.goalExecute
+        ? await this.agentExecutor.goalExecute({
+            tenantId: route.tenantId,
+            projectId: route.projectId,
+            message: route.message,
+            metadata
+          })
+        : await this.agentExecutor.execute({
+            tenantId: route.tenantId,
+            projectId: route.projectId,
+            message: route.message,
+            metadata
+          });
       const card = this.cardRenderer.render(execution);
+      const workflowId = this.resolveWorkflowId(execution);
+      const connectorUsed = this.resolveConnectorUsed(execution);
 
       await this.usageLogService.recordWorkflowRequest({
         tenantId: route.tenantId,
         userId: user.teamsUserId,
         requestType: "teams_message",
         workflowType: "teams_bot",
-        workflowId: execution.workflowId,
-        connectorUsed: execution.connectorUsed,
+        workflowId,
+        connectorUsed,
         responseTimeMs: Date.now() - start,
         success: true
       });
@@ -74,4 +86,33 @@ export class TeamsBotController {
       res.status(400).json({ error: message });
     }
   };
+
+  private shouldUseGoalExecution(message: string): boolean {
+    const text = message.toLowerCase();
+    return [
+      "executive summary",
+      "delivery readiness",
+      "current project picture",
+      "on track and what should i do next",
+      "with forecast and risks",
+      "major blockers and billable trend"
+    ].some((phrase) => text.includes(phrase));
+  }
+
+  private resolveWorkflowId(execution: Awaited<ReturnType<NonNullable<AgentExecutor["goalExecute"]>>> | Awaited<ReturnType<AgentExecutor["execute"]>>): string {
+    if ("workflowId" in execution && typeof execution.workflowId === "string") {
+      return execution.workflowId;
+    }
+    return "agentic_goal";
+  }
+
+  private resolveConnectorUsed(
+    execution: Awaited<ReturnType<NonNullable<AgentExecutor["goalExecute"]>>> | Awaited<ReturnType<AgentExecutor["execute"]>>
+  ): string {
+    if ("connectorUsed" in execution && typeof execution.connectorUsed === "string") {
+      return execution.connectorUsed;
+    }
+    const agentic = execution as AgenticExecutionResponse;
+    return agentic.response.workflowsExecuted.join(",");
+  }
 }

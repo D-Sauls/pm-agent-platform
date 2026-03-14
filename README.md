@@ -38,6 +38,22 @@ Notes:
 - Local admin login is enabled only when `NODE_ENV=development` and `ADMIN_AUTH_MODE=local`.
 - In non-development environments, admin auth strategy switches to Entra mode scaffold and local login is blocked.
 
+## Deployment Readiness
+- Azure deployment guide: [docs/DEPLOYMENT_AZURE.md](./docs/DEPLOYMENT_AZURE.md)
+- Teams app packaging:
+  - `npm run package:teams`
+  - output: `teams/app-package/`
+
+### Deployment-Critical Env Vars
+- `DATABASE_URL`
+- `KEYVAULT_URI`
+- `TEAMS_APP_ID`
+- `TEAMS_BOT_APP_ID`
+- `TEAMS_APP_DOMAIN`
+- `BOT_ENDPOINT`
+- `LICENSE_SECRET`
+- `LOG_LEVEL`
+
 ## Operational Readiness Notes
 - Structured logging:
   - JSON logs with `level`, `requestId`, `tenantId`, `workflowId`, and `connectorUsed` where available.

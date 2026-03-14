@@ -34,6 +34,15 @@ export function AuditLogsPage() {
     reason?: string;
     timestamp: string;
   }>>([]);
+  const [agenticRuns, setAgenticRuns] = useState<
+    Array<{
+      planId: string;
+      goalType: string;
+      workflowsSelected: string[];
+      success: boolean;
+      timestamp: string;
+    }>
+  >([]);
   const [tenantFilter, setTenantFilter] = useState("");
 
   useEffect(() => {
@@ -60,6 +69,17 @@ export function AuditLogsPage() {
       }>;
     }>("/logs/connector-failures")
       .then((result) => setConnectorFailures(result.items))
+      .catch(() => undefined);
+    getAdminJson<{
+      items: Array<{
+        planId: string;
+        goalType: string;
+        workflowsSelected: string[];
+        success: boolean;
+        timestamp: string;
+      }>;
+    }>("/logs/agentic-runs")
+      .then((result) => setAgenticRuns(result.items))
       .catch(() => undefined);
   }, [tenantFilter]);
 
@@ -101,6 +121,15 @@ export function AuditLogsPage() {
       {connectorFailures.slice(0, 20).map((row, index) => (
         <p key={`${row.timestamp}-${index}`}>
           [{row.timestamp}] {row.tenantId} {row.connectorName} ({row.status}) {row.reason ?? ""}
+        </p>
+      ))}
+
+      <h3>Recent Agentic Runs</h3>
+      {agenticRuns.length === 0 ? <p>No agentic runs captured.</p> : null}
+      {agenticRuns.slice(0, 20).map((row) => (
+        <p key={row.planId}>
+          [{row.timestamp}] {row.goalType} [{row.workflowsSelected.join(" -> ")}]{" "}
+          {row.success ? "ok" : "failed"}
         </p>
       ))}
     </section>

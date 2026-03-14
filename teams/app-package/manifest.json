@@ -1,0 +1,80 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.16",
+  "version": "1.0.0",
+  "id": "00000000-0000-0000-0000-000000000001",
+  "packageName": "com.pmagent.platform",
+  "developer": {
+    "name": "PM Agent Platform",
+    "websiteUrl": "https://localhost:5173",
+    "privacyUrl": "https://localhost:5173/privacy",
+    "termsOfUseUrl": "https://localhost:5173/terms"
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "name": {
+    "short": "PM Agent",
+    "full": "Project Management Agent Assistant"
+  },
+  "description": {
+    "short": "PM Agent bot for workflows and reporting.",
+    "full": "Interact with PM Agent workflows in Microsoft Teams to generate reports, extract RAID, assess changes, forecast delivery, and summarize time/billing."
+  },
+  "accentColor": "#2b579a",
+  "defaultInstallScope": "personal",
+  "staticTabs": [
+    {
+      "entityId": "pm-agent-home",
+      "name": "PM Agent",
+      "contentUrl": "https://localhost:5173",
+      "websiteUrl": "https://localhost:5173",
+      "scopes": ["personal"]
+    },
+    {
+      "entityId": "pm-agent-admin",
+      "name": "Admin Control Plane",
+      "contentUrl": "https://localhost:5173/admin",
+      "websiteUrl": "https://localhost:5173/admin",
+      "scopes": ["personal"]
+    }
+  ],
+  "bots": [
+    {
+      "botId": "00000000-0000-0000-0000-000000000001",
+      "needsChannelSelector": false,
+      "scopes": ["personal", "team", "groupchat"],
+      "supportsFiles": false,
+      "isNotificationOnly": false,
+      "commandLists": [
+        {
+          "scopes": ["personal", "team", "groupchat"],
+          "commands": [
+            { "title": "generate weekly report", "description": "Run weekly report workflow" },
+            { "title": "extract raid", "description": "Run RAID extraction workflow" },
+            { "title": "assess change request", "description": "Run change assessment workflow" },
+            { "title": "forecast delivery risk", "description": "Run forecast workflow" },
+            { "title": "show billable hours this week", "description": "Run weekly time report workflow" }
+          ]
+        }
+      ]
+    }
+  ],
+  "authorization": {
+    "permissions": {
+      "resourceSpecific": [
+        {
+          "name": "TeamsActivity.Send.User",
+          "type": "Application"
+        }
+      ]
+    }
+  },
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": ["localhost", "127.0.0.1", "localhost:5173"],
+  "webApplicationInfo": {
+    "id": "00000000-0000-0000-0000-000000000001",
+    "resource": "api://00000000-0000-0000-0000-000000000001"
+  }
+}

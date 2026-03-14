@@ -1,4 +1,5 @@
 import type { AgentExecutionResponse } from "../../core/services/workflows/agentOrchestrator.js";
+import type { AgenticExecutionResponse } from "../../core/models/agenticModels.js";
 
 export interface TeamsActivity {
   type: string;
@@ -42,4 +43,10 @@ export interface AgentExecutor {
     message: string;
     metadata?: Record<string, unknown>;
   }): Promise<AgentExecutionResponse>;
+  goalExecute?(input: {
+    tenantId: string;
+    projectId?: string;
+    message: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<AgenticExecutionResponse>;
 }

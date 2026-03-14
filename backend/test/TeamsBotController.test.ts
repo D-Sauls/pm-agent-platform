@@ -16,6 +16,8 @@ class MockMessageRouter {
 }
 
 class MockAgentExecutor implements AgentExecutor {
+  goalExecuted = false;
+
   async execute() {
     return {
       workflowId: "weekly_report",
@@ -31,6 +33,27 @@ class MockAgentExecutor implements AgentExecutor {
           recommendations: ["Follow up on dependencies"]
         }
       } as any
+    };
+  }
+
+  async goalExecute() {
+    this.goalExecuted = true;
+    return {
+      planId: "plan-1",
+      goalType: "executive_readiness",
+      plannerConfidence: 0.9,
+      stopReason: "completed",
+      stepExecutions: [],
+      response: {
+        goalSummary: "Executive summary request",
+        workflowsExecuted: ["project_summary", "forecast"],
+        synthesizedSummary: "Project is amber with forecasted delivery risk.",
+        keyFindings: ["Delivery risk is amber"],
+        recommendedActions: ["Escalate blocker"],
+        assumptionsMade: [],
+        warnings: [],
+        generatedAt: new Date()
+      }
     };
   }
 }
@@ -79,4 +102,34 @@ test("TeamsBotController processes message and returns adaptive card response", 
   await controller.handleMessage(req as any, res as any);
   assert.equal(res.statusCode, 200);
   assert.ok(Array.isArray(res.payload.attachments));
+});
+
+test("TeamsBotController routes broad goals to agentic goal execution when available", async () => {
+  const executor = new MockAgentExecutor();
+  const controller = new TeamsBotController(
+    new TeamsAuthService(),
+    {
+      async route(): Promise<TeamsMessageRouteResult> {
+        return {
+          tenantId: "tenant-acme",
+          projectId: "project-alpha",
+          message: "Give me an executive summary with forecast and risks"
+        };
+      }
+    } as any,
+    executor,
+    new AdaptiveCardRenderer(),
+    new MockUsageLogService() as any
+  );
+  const req = mockReq({
+    type: "message",
+    text: "Give me an executive summary with forecast and risks",
+    from: { id: "teams-user-1" },
+    channelData: { tenant: { id: "teams-tenant-1" } }
+  });
+  const res = mockRes();
+
+  await controller.handleMessage(req as any, res as any);
+  assert.equal(res.statusCode, 200);
+  assert.equal(executor.goalExecuted, true);
 });

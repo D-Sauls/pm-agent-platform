@@ -4,6 +4,7 @@ import { changeAssessmentPrompt } from "../../../prompts/change_assessment.js";
 import { deliveryAdvisorPrompt } from "../../../prompts/delivery_advisor.js";
 import { forecastExplanationPrompt } from "../../../prompts/forecast_explanation.js";
 import { monthlyBillingRecommendationsPrompt } from "../../../prompts/monthly_billing_recommendations.js";
+import { knowledgeExplainPrompt } from "../../../prompts/knowledge_explain.js";
 import { projectSummaryPrompt } from "../../../prompts/project_summary.js";
 import { planningAssistantPrompt } from "../../../prompts/planning_assistant.js";
 import { weeklyTimeRecommendationsPrompt } from "../../../prompts/weekly_time_recommendations.js";
@@ -18,6 +19,7 @@ export type PromptTemplateKey =
   | "forecast_explanation"
   | "weekly_time_recommendations"
   | "monthly_billing_recommendations"
+  | "knowledge_explain"
   | "project_summary"
   | "planning_assistant";
 
@@ -29,6 +31,7 @@ const promptLibrary: Record<PromptTemplateKey, string> = {
   forecast_explanation: forecastExplanationPrompt,
   weekly_time_recommendations: weeklyTimeRecommendationsPrompt,
   monthly_billing_recommendations: monthlyBillingRecommendationsPrompt,
+  knowledge_explain: knowledgeExplainPrompt,
   project_summary: projectSummaryPrompt,
   planning_assistant: planningAssistantPrompt
 };
