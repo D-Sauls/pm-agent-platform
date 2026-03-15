@@ -14,9 +14,14 @@ import {
   courseVersionServiceV2,
   effortSummaryServiceV2,
   forecastServiceV2,
+  graphAuthServiceV2,
   hrOverrideServiceV2,
   knowledgeIndexServiceV2,
+  sharePointConnectorV2,
   learningProgressServiceV2,
+  onboardingPathServiceV2,
+  onboardingProgressServiceV2,
+  onboardingRecommendationServiceV2,
   lessonServiceV2,
   licenseServiceV2,
   planLimitServiceV2,
@@ -42,7 +47,12 @@ import { CourseRecommendationWorkflow } from "../core/services/workflows/courseR
 import { DeliveryAdvisorWorkflow } from "../core/services/workflows/deliveryAdvisorWorkflow.js";
 import { ForecastWorkflow } from "../core/services/workflows/forecastWorkflow.js";
 import { KnowledgeExplainWorkflow } from "../core/services/workflows/knowledgeExplainWorkflow.js";
+import { KnowledgeDocumentSummaryWorkflow } from "../core/services/workflows/knowledgeDocumentSummaryWorkflow.js";
+import { SharePointDocumentLookupWorkflow } from "../core/services/workflows/sharePointDocumentLookupWorkflow.js";
 import { LearningProgressWorkflow } from "../core/services/workflows/learningProgressWorkflow.js";
+import { OnboardingRecommendationWorkflow } from "../core/services/workflows/onboardingRecommendationWorkflow.js";
+import { NextTrainingStepWorkflow } from "../core/services/workflows/nextTrainingStepWorkflow.js";
+import { RoleKnowledgeLookupWorkflow } from "../core/services/workflows/roleKnowledgeLookupWorkflow.js";
 import { MonthlyBillingSummaryWorkflow } from "../core/services/workflows/monthlyBillingSummaryWorkflow.js";
 import { PolicyLookupWorkflow } from "../core/services/workflows/policyLookupWorkflow.js";
 import { ProjectSummaryWorkflow } from "../core/services/workflows/projectSummaryWorkflow.js";
@@ -217,6 +227,19 @@ const knowledgeSearchSchema = z.object({
   query: z.string().min(1),
   role: z.string().optional()
 });
+const onboardingLookupSchema = z.object({
+  tenantId: z.string().min(1),
+  userId: z.string().optional(),
+  role: z.string().min(1),
+  department: z.string().optional(),
+  query: z.string().optional()
+});
+
+const documentSearchSchema = knowledgeSearchSchema.extend({
+  documentId: z.string().optional(),
+  libraryId: z.string().optional(),
+  tags: z.array(z.string()).optional()
+});
 const complianceRequirementSchema = z.object({
   tenantId: z.string().min(1),
   id: z.string().min(1),
@@ -297,9 +320,27 @@ const monthlyBillingWorkflow = new MonthlyBillingSummaryWorkflow(
   new PromptEngine()
 );
 const courseRecommendationWorkflow = new CourseRecommendationWorkflow(recommendationServiceV2);
+const onboardingRecommendationWorkflow = new OnboardingRecommendationWorkflow(onboardingRecommendationServiceV2);
+const nextTrainingStepWorkflow = new NextTrainingStepWorkflow(
+  onboardingRecommendationServiceV2,
+  onboardingProgressServiceV2
+);
+const roleKnowledgeLookupWorkflow = new RoleKnowledgeLookupWorkflow(
+  onboardingRecommendationServiceV2,
+  sharePointConnectorV2
+);
 const policyLookupWorkflow = new PolicyLookupWorkflow(policyServiceV2);
 const learningProgressWorkflow = new LearningProgressWorkflow(courseServiceV2, learningProgressServiceV2);
 const knowledgeExplainWorkflow = new KnowledgeExplainWorkflow(knowledgeIndexServiceV2, new PromptEngine());
+const sharePointDocumentLookupWorkflow = new SharePointDocumentLookupWorkflow(
+  sharePointConnectorV2,
+  knowledgeIndexServiceV2
+);
+const knowledgeDocumentSummaryWorkflow = new KnowledgeDocumentSummaryWorkflow(
+  sharePointConnectorV2,
+  knowledgeIndexServiceV2,
+  new PromptEngine()
+);
 const complianceAuditWorkflow = new ComplianceAuditWorkflow(
   complianceRequirementServiceV2,
   acknowledgementServiceV2,
@@ -327,6 +368,16 @@ productRoutes.get("/tenants/:tenantId/context", resolveTenant, validateLicense, 
   }
 });
 
+productRoutes.get("/m365/graph/admin-consent", async (req, res, next) => {
+  try {
+    const tenantId = String(req.query.tenantId ?? "common");
+    const state = String(req.query.state ?? `m365-${Date.now()}`);
+    const url = graphAuthServiceV2.buildAdminConsentUrl(state, tenantId);
+    res.json({ tenantId, state, url });
+  } catch (error) {
+    next(error);
+  }
+});
 productRoutes.get("/projects/:projectId/context", resolveTenant, validateLicense, async (req, res, next) => {
   try {
     const tenantContext = req.tenantContext;
@@ -967,6 +1018,229 @@ productRoutes.post("/workflows/knowledge-explain", resolveTenant, validateLicens
   }
 });
 
+productRoutes.post("/workflows/sharepoint-document-lookup", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsed = documentSearchSchema.parse(req.body);
+    const tenantContext = req.tenantContext;
+    if (!tenantContext) {
+      throw new AppError("TENANT_NOT_FOUND", "Tenant context missing", 400);
+    }
+
+    const response = await sharePointDocumentLookupWorkflow.execute({
+      tenantContext,
+      projectContext: {
+        project: {
+          projectId: "sharepoint-knowledge-domain",
+          tenantId: tenantContext.tenant.tenantId,
+          sourceSystem: "sharepoint",
+          name: "SharePoint Knowledge Domain",
+          deliveryMode: "hybrid"
+        },
+        tasks: [],
+        milestones: [],
+        risks: [],
+        issues: [],
+        dependencies: [],
+        statusSummary: "Knowledge"
+      },
+      userRequest: parsed.query,
+      workflowId: "sharepoint_document_lookup",
+      timestamp: new Date(),
+      metadata: { role: parsed.role, libraryId: parsed.libraryId, tags: parsed.tags }
+    });
+
+    req.requestMetadata = {
+      requestType: "workflow_execute",
+      workflowType: "sharepoint_document_lookup",
+      workflowId: "sharepoint_document_lookup",
+      connectorUsed: "sharepoint"
+    };
+    res.json(response.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.post("/workflows/knowledge-document-summary", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsed = documentSearchSchema.parse(req.body);
+    const tenantContext = req.tenantContext;
+    if (!tenantContext) {
+      throw new AppError("TENANT_NOT_FOUND", "Tenant context missing", 400);
+    }
+
+    const response = await knowledgeDocumentSummaryWorkflow.execute({
+      tenantContext,
+      projectContext: {
+        project: {
+          projectId: "sharepoint-summary-domain",
+          tenantId: tenantContext.tenant.tenantId,
+          sourceSystem: "sharepoint",
+          name: "SharePoint Summary Domain",
+          deliveryMode: "hybrid"
+        },
+        tasks: [],
+        milestones: [],
+        risks: [],
+        issues: [],
+        dependencies: [],
+        statusSummary: "Knowledge"
+      },
+      userRequest: parsed.query,
+      workflowId: "knowledge_document_summary",
+      timestamp: new Date(),
+      metadata: { role: parsed.role, documentId: parsed.documentId }
+    });
+
+    req.requestMetadata = {
+      requestType: "workflow_execute",
+      workflowType: "knowledge_document_summary",
+      workflowId: "knowledge_document_summary",
+      connectorUsed: "sharepoint"
+    };
+    res.json(response.data);
+  } catch (error) {
+    next(error);
+  }
+});
+productRoutes.post("/workflows/onboarding-recommendation", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsed = onboardingLookupSchema.parse(req.body);
+    const tenantContext = req.tenantContext;
+    if (!tenantContext) {
+      throw new AppError("TENANT_NOT_FOUND", "Tenant context missing", 400);
+    }
+
+    const response = await onboardingRecommendationWorkflow.execute({
+      tenantContext,
+      projectContext: {
+        project: {
+          projectId: "onboarding-domain",
+          tenantId: tenantContext.tenant.tenantId,
+          sourceSystem: "knowledge",
+          name: "Onboarding Domain",
+          deliveryMode: "hybrid"
+        },
+        tasks: [], milestones: [], risks: [], issues: [], dependencies: [], statusSummary: "Knowledge"
+      },
+      userRequest: parsed.query ?? parsed.role,
+      workflowId: "onboarding_recommendation",
+      timestamp: new Date(),
+      metadata: { role: parsed.role, department: parsed.department }
+    });
+
+    req.requestMetadata = { requestType: "workflow_execute", workflowType: "onboarding_recommendation", workflowId: "onboarding_recommendation" };
+    res.json(response.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.post("/workflows/next-training-step", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsed = onboardingLookupSchema.extend({ userId: z.string().min(1) }).parse(req.body);
+    const tenantContext = req.tenantContext;
+    if (!tenantContext) {
+      throw new AppError("TENANT_NOT_FOUND", "Tenant context missing", 400);
+    }
+
+    const response = await nextTrainingStepWorkflow.execute({
+      tenantContext,
+      projectContext: {
+        project: {
+          projectId: "onboarding-progress-domain",
+          tenantId: tenantContext.tenant.tenantId,
+          sourceSystem: "knowledge",
+          name: "Onboarding Progress Domain",
+          deliveryMode: "hybrid"
+        },
+        tasks: [], milestones: [], risks: [], issues: [], dependencies: [], statusSummary: "Knowledge"
+      },
+      userRequest: parsed.query ?? "What should I complete next?",
+      workflowId: "next_training_step",
+      timestamp: new Date(),
+      metadata: { userId: parsed.userId, role: parsed.role, department: parsed.department }
+    });
+
+    req.requestMetadata = { requestType: "workflow_execute", workflowType: "next_training_step", workflowId: "next_training_step" };
+    res.json(response.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.post("/workflows/role-knowledge-lookup", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsed = onboardingLookupSchema.parse(req.body);
+    const tenantContext = req.tenantContext;
+    if (!tenantContext) {
+      throw new AppError("TENANT_NOT_FOUND", "Tenant context missing", 400);
+    }
+
+    const response = await roleKnowledgeLookupWorkflow.execute({
+      tenantContext,
+      projectContext: {
+        project: {
+          projectId: "role-knowledge-domain",
+          tenantId: tenantContext.tenant.tenantId,
+          sourceSystem: "knowledge",
+          name: "Role Knowledge Domain",
+          deliveryMode: "hybrid"
+        },
+        tasks: [], milestones: [], risks: [], issues: [], dependencies: [], statusSummary: "Knowledge"
+      },
+      userRequest: parsed.query ?? parsed.role,
+      workflowId: "role_knowledge_lookup",
+      timestamp: new Date(),
+      metadata: { role: parsed.role, department: parsed.department }
+    });
+
+    req.requestMetadata = { requestType: "workflow_execute", workflowType: "role_knowledge_lookup", workflowId: "role_knowledge_lookup" };
+    res.json(response.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.get("/onboarding/path", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsed = onboardingLookupSchema.parse({
+      tenantId: String(req.query.tenantId ?? ""),
+      userId: req.query.userId ? String(req.query.userId) : undefined,
+      role: String(req.query.role ?? ""),
+      department: req.query.department ? String(req.query.department) : undefined,
+      query: req.query.query ? String(req.query.query) : undefined
+    });
+    const recommendation = onboardingRecommendationServiceV2.recommend(parsed.tenantId, parsed.role, parsed.department);
+    req.requestMetadata = { requestType: "onboarding_path_get", workflowType: "knowledge_domain" };
+    res.json(recommendation);
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.get("/onboarding/progress", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsed = onboardingLookupSchema.extend({ userId: z.string().min(1) }).parse({
+      tenantId: String(req.query.tenantId ?? ""),
+      userId: String(req.query.userId ?? ""),
+      role: String(req.query.role ?? ""),
+      department: req.query.department ? String(req.query.department) : undefined,
+      query: req.query.query ? String(req.query.query) : undefined
+    });
+    const recommendation = onboardingRecommendationServiceV2.recommend(parsed.tenantId, parsed.role, parsed.department);
+    const progress = recommendation.onboardingPath
+      ? onboardingProgressServiceV2.calculateProgress(parsed.tenantId, parsed.userId, recommendation.onboardingPath.id)
+      : null;
+    const nextStep = recommendation.onboardingPath
+      ? onboardingProgressServiceV2.recommendNext(parsed.tenantId, parsed.userId, recommendation.onboardingPath.id)
+      : null;
+    req.requestMetadata = { requestType: "onboarding_progress_get", workflowType: "knowledge_domain" };
+    res.json({ recommendation, progress, nextStep });
+  } catch (error) {
+    next(error);
+  }
+});
 productRoutes.post("/agent/execute", resolveTenant, validateLicense, async (req, res, next) => {
   try {
     const parsed = agentExecuteRequestSchema.parse(req.body);
@@ -986,6 +1260,50 @@ productRoutes.post("/agent/execute", resolveTenant, validateLicense, async (req,
   }
 });
 
+productRoutes.get("/knowledge/documents", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const parsed = documentSearchSchema.parse({
+      tenantId: String(req.query.tenantId ?? ""),
+      query: String(req.query.query ?? "document"),
+      role: req.query.role ? String(req.query.role) : undefined,
+      libraryId: req.query.libraryId ? String(req.query.libraryId) : undefined,
+      tags: typeof req.query.tags === "string" ? req.query.tags.split(",").map((tag) => tag.trim()).filter(Boolean) : undefined
+    });
+    const tenantContext = req.tenantContext;
+    if (!tenantContext) {
+      throw new AppError("TENANT_NOT_FOUND", "Tenant context missing", 400);
+    }
+    const documents = await sharePointConnectorV2.listDocuments(tenantContext, {
+      query: parsed.query === "document" ? undefined : parsed.query,
+      role: parsed.role,
+      libraryId: parsed.libraryId,
+      tags: parsed.tags
+    });
+    knowledgeIndexServiceV2.indexDocuments(documents);
+    req.requestMetadata = { requestType: "knowledge_documents_list", connectorUsed: "sharepoint" };
+    res.json({ tenantId: tenantContext.tenant.tenantId, documents });
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.get("/knowledge/documents/:documentId", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const tenantContext = req.tenantContext;
+    if (!tenantContext) {
+      throw new AppError("TENANT_NOT_FOUND", "Tenant context missing", 400);
+    }
+    const document = await sharePointConnectorV2.getDocument(tenantContext, req.params.documentId);
+    if (!document) {
+      throw new AppError("PROJECT_NOT_FOUND", `Document ${req.params.documentId} not found`, 404);
+    }
+    knowledgeIndexServiceV2.indexDocuments([document]);
+    req.requestMetadata = { requestType: "knowledge_document_get", connectorUsed: "sharepoint" };
+    res.json(document);
+  } catch (error) {
+    next(error);
+  }
+});
 productRoutes.post("/learning/courses", resolveTenant, validateLicense, async (req, res, next) => {
   try {
     const parsed = createCourseRequestSchema.parse(req.body);
@@ -1305,6 +1623,31 @@ productRoutes.get(
   }
 );
 
+productRoutes.get("/compliance/my-acknowledgements", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const tenantId = String(req.query.tenantId ?? "");
+    const userId = String(req.query.userId ?? req.userContext?.userId ?? "");
+    req.requestMetadata = { requestType: "compliance_my_acknowledgement_list", workflowType: "compliance" };
+    res.json({
+      tenantId,
+      userId,
+      acknowledgements: acknowledgementServiceV2.findHistory({ tenantId, userId })
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.get("/compliance/config", resolveTenant, validateLicense, async (req, res, next) => {
+  try {
+    const tenantId = String(req.query.tenantId ?? "");
+    req.requestMetadata = { requestType: "compliance_config_get", workflowType: "compliance" };
+    res.json({ tenantId, config: complianceConfigServiceV2.getConfig(tenantId) });
+  } catch (error) {
+    next(error);
+  }
+});
+
 productRoutes.post(
   "/compliance/hr-overrides",
   resolveTenant,
@@ -1396,8 +1739,6 @@ productRoutes.get(
   "/policies/:policyId/versions",
   resolveTenant,
   validateLicense,
-  requireAdminAuth,
-  requireAdminRole(["superadmin", "supportadmin", "readonlyadmin"]),
   async (req, res, next) => {
     try {
       req.requestMetadata = { requestType: "policy_version_list", workflowType: "compliance" };
@@ -1441,8 +1782,6 @@ productRoutes.get(
   "/courses/:courseId/versions",
   resolveTenant,
   validateLicense,
-  requireAdminAuth,
-  requireAdminRole(["superadmin", "supportadmin", "readonlyadmin"]),
   async (req, res, next) => {
     try {
       req.requestMetadata = { requestType: "course_version_list", workflowType: "compliance" };
@@ -1804,3 +2143,16 @@ productRoutes.post("/connectors/clickup/test-sync", resolveTenant, validateLicen
     next(error);
   }
 });
+
+
+
+
+
+
+
+
+
+
+
+
+

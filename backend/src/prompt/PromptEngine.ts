@@ -4,6 +4,7 @@ import { changeAssessmentPrompt } from "../../../prompts/change_assessment.js";
 import { deliveryAdvisorPrompt } from "../../../prompts/delivery_advisor.js";
 import { forecastExplanationPrompt } from "../../../prompts/forecast_explanation.js";
 import { monthlyBillingRecommendationsPrompt } from "../../../prompts/monthly_billing_recommendations.js";
+import { knowledgeDocumentSummaryPrompt } from "../../../prompts/knowledge_document_summary.js";
 import { knowledgeExplainPrompt } from "../../../prompts/knowledge_explain.js";
 import { projectSummaryPrompt } from "../../../prompts/project_summary.js";
 import { planningAssistantPrompt } from "../../../prompts/planning_assistant.js";
@@ -20,6 +21,7 @@ export type PromptTemplateKey =
   | "weekly_time_recommendations"
   | "monthly_billing_recommendations"
   | "knowledge_explain"
+  | "knowledge_document_summary"
   | "project_summary"
   | "planning_assistant";
 
@@ -32,11 +34,11 @@ const promptLibrary: Record<PromptTemplateKey, string> = {
   weekly_time_recommendations: weeklyTimeRecommendationsPrompt,
   monthly_billing_recommendations: monthlyBillingRecommendationsPrompt,
   knowledge_explain: knowledgeExplainPrompt,
+  knowledge_document_summary: knowledgeDocumentSummaryPrompt,
   project_summary: projectSummaryPrompt,
   planning_assistant: planningAssistantPrompt
 };
 
-// Central point to build model-ready prompts with delivery mode context.
 export class PromptEngine {
   constructor(private readonly llmClient: LlmClient = new OpenAiLlmClient()) {}
 

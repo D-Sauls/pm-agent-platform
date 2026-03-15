@@ -27,6 +27,9 @@ export class ClickUpConnector implements BaseConnector {
       tenantContext.tenant.tenantId,
       this.sourceSystem
     );
+    if (!apiKey) {
+      throw new AppError("CONNECTOR_AUTH_FAILED", "ClickUp API key was not resolved.", 401);
+    }
     const listId = this.resolveListId(config, projectId);
     const list = await this.client.getList(listId, apiKey, config.baseUrl ?? undefined);
     return mapClickUpProject(tenantContext.tenant.tenantId, list, config);
@@ -37,6 +40,9 @@ export class ClickUpConnector implements BaseConnector {
       tenantContext.tenant.tenantId,
       this.sourceSystem
     );
+    if (!apiKey) {
+      throw new AppError("CONNECTOR_AUTH_FAILED", "ClickUp API key was not resolved.", 401);
+    }
     const listId = this.resolveListId(config, projectId);
     const tasks = await this.client.getTasks(listId, apiKey, config.baseUrl ?? undefined);
     return tasks.map((task) => mapClickUpTask(projectId, task));
@@ -47,6 +53,9 @@ export class ClickUpConnector implements BaseConnector {
       tenantContext.tenant.tenantId,
       this.sourceSystem
     );
+    if (!apiKey) {
+      throw new AppError("CONNECTOR_AUTH_FAILED", "ClickUp API key was not resolved.", 401);
+    }
     const listId = this.resolveListId(config, projectId);
     const tasks = await this.client.getTasks(listId, apiKey, config.baseUrl ?? undefined);
     return tasks
@@ -69,6 +78,9 @@ export class ClickUpConnector implements BaseConnector {
       tenantContext.tenant.tenantId,
       this.sourceSystem
     );
+    if (!apiKey) {
+      throw new AppError("CONNECTOR_AUTH_FAILED", "ClickUp API key was not resolved.", 401);
+    }
     if (!config.teamId) {
       return [];
     }
@@ -91,6 +103,9 @@ export class ClickUpConnector implements BaseConnector {
         tenantId,
         this.sourceSystem
       );
+      if (!apiKey) {
+        throw new AppError("CONNECTOR_AUTH_FAILED", "ClickUp API key was not resolved.", 401);
+      }
       const listId = this.resolveListId(config, undefined);
       await this.client.getList(listId, apiKey, config.baseUrl ?? undefined);
       return {
@@ -139,3 +154,4 @@ export class ClickUpConnector implements BaseConnector {
     return name.includes("milestone") || task.status?.type === "milestone";
   }
 }
+

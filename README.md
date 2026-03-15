@@ -38,6 +38,28 @@ Notes:
 - Local admin login is enabled only when `NODE_ENV=development` and `ADMIN_AUTH_MODE=local`.
 - In non-development environments, admin auth strategy switches to Entra mode scaffold and local login is blocked.
 
+## Employee PWA (Local Run)
+1. Start backend:
+   - `npm run dev -w backend`
+2. Start frontend:
+   - `npm run dev -w frontend`
+3. Open:
+   - `http://localhost:5173/`
+4. Use the employee login screen with a tenant and user context such as:
+   - Tenant: `tenant-acme`
+   - User: `user-fin-1`
+   - Role: `Finance Analyst`
+   - Department: `Finance`
+5. Teams-specific surface remains available at:
+   - `http://localhost:5173/teams`
+
+### PWA Notes
+- The PWA manifest is served from `frontend/public/manifest.webmanifest`.
+- Service worker is registered from `frontend/src/main.tsx` and implemented in `frontend/public/sw.js`.
+- Offline downloads are tracked locally in browser storage and rely on service worker caching for supported content URLs.
+- Progress updates queue locally while offline and are replayed when the browser reconnects.
+- Tenant branding is resolved from tenant context plus safe branding presets/fallbacks in the frontend.
+
 ## Deployment Readiness
 - Azure deployment guide: [docs/DEPLOYMENT_AZURE.md](./docs/DEPLOYMENT_AZURE.md)
 - Teams app packaging:

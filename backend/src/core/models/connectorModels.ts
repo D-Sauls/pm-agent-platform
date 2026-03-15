@@ -1,4 +1,4 @@
-export type ConnectorAuthType = "api_key";
+export type ConnectorAuthType = "api_key" | "oauth";
 export type ConnectorHealthStatus = "healthy" | "degraded" | "unhealthy";
 
 export interface ConnectorConfig {
@@ -10,6 +10,8 @@ export interface ConnectorConfig {
   teamId?: string | null;
   listId?: string | null;
   folderId?: string | null;
+  siteId?: string | null;
+  driveId?: string | null;
   isEnabled: boolean;
   metadata?: Record<string, unknown>;
 }

@@ -54,6 +54,41 @@ export class AgentPlanner {
         rationale: "Detected course recommendation intent"
       };
     }
+    if (this.hasAny(text, ["what should i complete next", "next training step", "next onboarding step"])) {
+      return {
+        workflowId: "next_training_step",
+        confidenceScore: 0.9,
+        rationale: "Detected next training step intent"
+      };
+    }
+    if (this.hasAny(text, ["onboarding path", "recommended onboarding", "role onboarding", "training checklist"])) {
+      return {
+        workflowId: "onboarding_recommendation",
+        confidenceScore: 0.9,
+        rationale: "Detected onboarding recommendation intent"
+      };
+    }
+    if (this.hasAny(text, ["what policies apply to my role", "role knowledge", "role policies", "role training resources"])) {
+      return {
+        workflowId: "role_knowledge_lookup",
+        confidenceScore: 0.87,
+        rationale: "Detected role knowledge lookup intent"
+      };
+    }
+    if (this.hasAny(text, ["sharepoint document", "find document", "microsoft 365 document", "sharepoint library"])) {
+      return {
+        workflowId: "sharepoint_document_lookup",
+        confidenceScore: 0.87,
+        rationale: "Detected SharePoint document lookup intent"
+      };
+    }
+    if (this.hasAny(text, ["summarize document", "document summary", "summarize sharepoint", "corporate document summary"])) {
+      return {
+        workflowId: "knowledge_document_summary",
+        confidenceScore: 0.84,
+        rationale: "Detected document summary intent"
+      };
+    }
     if (
       this.hasAny(text, [
         "find policy",
@@ -213,8 +248,8 @@ export class AgentPlanner {
     ) {
       return {
         workflowId: "delivery_advisor",
-        confidenceScore: 0.83,
-        rationale: "Detected recommendation/advisor intent"
+        confidenceScore: 0.9,
+        rationale: "Detected delivery advisor intent"
       };
     }
     if (
@@ -223,26 +258,25 @@ export class AgentPlanner {
         "project overview",
         "project status",
         "project summary",
-        "executive summary",
-        "summarize project",
-        "summary"
+        "executive summary"
       ])
     ) {
       return {
         workflowId: "project_summary",
-        confidenceScore: 0.86,
-        rationale: "Detected summary intent"
+        confidenceScore: 0.9,
+        rationale: "Detected project summary intent"
       };
     }
 
     return {
-      workflowId: "project_summary",
-      confidenceScore: 0.5,
-      rationale: "Fallback to generic project summary"
+      workflowId: "weekly_report",
+      confidenceScore: 0.55,
+      rationale: "Fallback to weekly report workflow"
     };
   }
 
-  private hasAny(text: string, words: string[]): boolean {
-    return words.some((word) => text.includes(word));
+  private hasAny(text: string, phrases: string[]): boolean {
+    return phrases.some((phrase) => text.includes(phrase));
   }
 }
+

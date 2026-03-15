@@ -1,24 +1,25 @@
 import type { ChangeAssessmentResult } from "../../models/changeAssessmentModels.js";
+import type { ComplianceAuditResult, RequirementStatusResult } from "../../models/complianceModels.js";
 import type { DeliveryAdvisorResult } from "../../models/deliveryAdvisorModels.js";
 import type { ForecastWorkflowResult } from "../../models/forecastWorkflowModels.js";
 import type {
-  ComplianceAuditResult,
-  RequirementStatusResult
-} from "../../models/complianceModels.js";
-import type {
   CourseRecommendationResult,
+  KnowledgeDocumentSummaryResult,
   KnowledgeExplainResult,
   LearningProgressResult,
-  PolicyLookupResult
+  PolicyLookupResult,
+  SharePointDocumentLookupResult
 } from "../../models/knowledgeModels.js";
+import type {
+  NextTrainingStepResult,
+  OnboardingRecommendationResult,
+  RoleKnowledgeLookupResult
+} from "../../models/onboardingModels.js";
 import type { NormalizedProjectContext, WeeklyReportOutput } from "../../models/projectModels.js";
 import type { ProjectSummaryResult } from "../../models/projectSummaryModels.js";
 import type { RaidExtractionResult } from "../../models/raidModels.js";
 import type { TenantContext } from "../../models/tenantModels.js";
-import type {
-  MonthlyBillingSummaryResult,
-  WeeklyTimeReportResult
-} from "../../models/timeWorkflowModels.js";
+import type { MonthlyBillingSummaryResult, WeeklyTimeReportResult } from "../../models/timeWorkflowModels.js";
 
 export type WorkflowId =
   | "weekly_report"
@@ -33,6 +34,11 @@ export type WorkflowId =
   | "policy_lookup"
   | "learning_progress"
   | "knowledge_explain"
+  | "sharepoint_document_lookup"
+  | "knowledge_document_summary"
+  | "onboarding_recommendation"
+  | "next_training_step"
+  | "role_knowledge_lookup"
   | "compliance_audit"
   | "requirement_status";
 
@@ -62,6 +68,11 @@ export interface WorkflowResult {
     | "policy_lookup"
     | "learning_progress"
     | "knowledge_explain"
+    | "sharepoint_document_lookup"
+    | "knowledge_document_summary"
+    | "onboarding_recommendation"
+    | "next_training_step"
+    | "role_knowledge_lookup"
     | "compliance_audit"
     | "requirement_status"
     | "advice"
@@ -76,8 +87,13 @@ export interface WorkflowResult {
     | ProjectSummaryResult
     | CourseRecommendationResult
     | PolicyLookupResult
+    | SharePointDocumentLookupResult
+    | KnowledgeDocumentSummaryResult
     | LearningProgressResult
     | KnowledgeExplainResult
+    | OnboardingRecommendationResult
+    | NextTrainingStepResult
+    | RoleKnowledgeLookupResult
     | ComplianceAuditResult
     | RequirementStatusResult
     | RaidExtractionResult

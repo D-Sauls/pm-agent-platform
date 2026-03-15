@@ -54,8 +54,23 @@ export class DeterministicPlannerStrategy implements AgentPlannerStrategy {
     if (hasAny(["recommend courses", "learning path", "training for role", "onboarding path"])) {
       include("course_recommendation");
     }
+    if (hasAny(["recommended onboarding", "role onboarding", "training checklist", "onboarding path"])) {
+      include("onboarding_recommendation");
+    }
+    if (hasAny(["what should i complete next", "next training step", "next onboarding step"])) {
+      include("next_training_step");
+    }
+    if (hasAny(["what policies apply to my role", "role knowledge", "role policies", "role training resources"])) {
+      include("role_knowledge_lookup");
+    }
     if (hasAny(["find policy", "policy lookup", "required policy", "policy for"])) {
       include("policy_lookup");
+    }
+    if (hasAny(["sharepoint document", "find document", "microsoft 365 document", "locate corporate document", "sharepoint library"])) {
+      include("sharepoint_document_lookup");
+    }
+    if (hasAny(["summarize document", "document summary", "summarize sharepoint", "explain this corporate document"])) {
+      include("knowledge_document_summary");
     }
     if (hasAny(["learning progress", "training progress", "course progress", "completion status"])) {
       include("learning_progress");
@@ -136,10 +151,18 @@ export class DeterministicPlannerStrategy implements AgentPlannerStrategy {
     if (workflows.includes("raid_extraction")) {
       return "raid_analysis";
     }
-    if (workflows.includes("course_recommendation")) {
+    if (workflows.includes("course_recommendation") || workflows.includes("onboarding_recommendation")) {
       return "learning_recommendation";
     }
-    if (workflows.includes("policy_lookup") || workflows.includes("knowledge_explain")) {
+    if (workflows.includes("next_training_step")) {
+      return "next_training_step";
+    }
+    if (
+      workflows.includes("policy_lookup") ||
+      workflows.includes("knowledge_explain") ||
+      workflows.includes("sharepoint_document_lookup") ||
+      workflows.includes("knowledge_document_summary")
+    ) {
       return "knowledge_lookup";
     }
     if (workflows.includes("learning_progress")) {
@@ -158,8 +181,7 @@ export class DeterministicPlannerStrategy implements AgentPlannerStrategy {
   }
 
   private estimateConfidence(goalType: string, stepCount: number, warningCount: number): number {
-    const base =
-      goalType === "general_goal" ? 0.68 : goalType === "weekly_reporting" ? 0.84 : 0.9;
+    const base = goalType === "general_goal" ? 0.68 : goalType === "weekly_reporting" ? 0.84 : 0.9;
     const score = base - warningCount * 0.06 - Math.max(0, stepCount - 3) * 0.03;
     return Number(Math.max(0.4, Math.min(0.98, score)).toFixed(2));
   }
@@ -177,3 +199,4 @@ export class AgentPlannerService {
     return this.strategy.plan(request, allowedWorkflows, this.maxSteps);
   }
 }
+

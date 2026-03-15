@@ -30,9 +30,7 @@ export function loadEnvConfig(source: EnvSource = process.env) {
     appEnv,
     nodeEnv,
     port: readNumber(source.PORT, 4000),
-    databaseUrl:
-      source.DATABASE_URL ??
-      (appEnv === "local" ? "file:./data/pm-agent-local.db" : ""),
+    databaseUrl: source.DATABASE_URL ?? (appEnv === "local" ? "file:./data/pm-agent-local.db" : ""),
     keyVaultUri: source.KEYVAULT_URI ?? "",
     openAiApiKey: source.OPENAI_API_KEY ?? "",
     openAiModel: source.OPENAI_MODEL ?? "gpt-4.1-mini",
@@ -46,6 +44,10 @@ export function loadEnvConfig(source: EnvSource = process.env) {
     teamsAppDomain: source.TEAMS_APP_DOMAIN ?? "localhost:5173",
     botEndpoint: source.BOT_ENDPOINT ?? "http://localhost:4000/api/teams/messages",
     licenseSecret: source.LICENSE_SECRET ?? "local-dev-license-secret",
+    graphClientId: source.GRAPH_CLIENT_ID ?? "",
+    graphClientSecret: source.GRAPH_CLIENT_SECRET ?? "",
+    graphRedirectUri: source.GRAPH_REDIRECT_URI ?? "http://localhost:4000/api/m365/graph/callback",
+    graphDefaultTenantId: source.GRAPH_TENANT_ID ?? "common",
     logLevel,
     telemetryVerbose: source.TELEMETRY_VERBOSE === "true" || nodeEnv === "development",
     rateLimitWindowMs: readNumber(source.RATE_LIMIT_WINDOW_MS, 60_000),
