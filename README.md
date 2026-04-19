@@ -1,27 +1,14 @@
-# Project Management Agent Assistant
+# AI Onboarding, Learning, Knowledge, and Compliance Platform
 
-Enterprise-ready TypeScript scaffold for a Microsoft Teams-first project management assistant.
+Enterprise-ready TypeScript platform for multi-tenant employee onboarding, learning delivery, compliance evidence, HR provisioning, Microsoft Teams assistance, and PWA access.
 
 ## Architecture Overview
-- `frontend/`: Teams-compatible web UI with chat and dashboard shell.
-- `backend/`: Node.js API server, orchestration flow, and prompt engine.
-- `connectors/`: External PM integrations (ClickUp, Zoho, Monday, Microsoft Graph).
-- `models/`: Normalized project and RAID domain models.
-- `services/`: Agent/business logic, reporting, and normalization layer.
-- `prompts/`: Prompt templates for core assistant capabilities.
-
-## Delivery Modes
-- `Waterfall`
-- `AgileLean`
-- `HybridPrince2Agile`
-
-Each mode influences report emphasis, planning guidance, and recommendation style.
-
-## Next Steps
-1. Wire real auth (OAuth + API key vault).
-2. Add persistent storage for normalized snapshots.
-3. Implement connector adapters against live APIs.
-4. Integrate LLM provider SDK in `PromptEngine`.
+- `frontend/`: PWA learning frontend, admin portal surfaces, and Teams-compatible assistant shell.
+- `backend/`: Node.js API server, tenant-aware admin routes, onboarding engine, HR import services, compliance/evidence APIs, observability middleware, and agentic orchestration.
+- `prompts/`: Prompt templates used by the assistant and workflow orchestration layer.
+- `teams/`: Teams app manifest, packaging script, and Teams deployment assets.
+- `docs/`: Deployment and platform audit documentation.
+- `data/`: Local persistent development data stores.
 
 ## Admin Control Plane (Local Run)
 1. Start backend:
@@ -53,7 +40,7 @@ Notes:
 5. Teams-specific surface remains available at:
    - `http://localhost:5173/teams`
 
-### PWA Notes
+## PWA Notes
 - The PWA manifest is served from `frontend/public/manifest.webmanifest`.
 - Service worker is registered from `frontend/src/main.tsx` and implemented in `frontend/public/sw.js`.
 - Offline downloads are tracked locally in browser storage and rely on service worker caching for supported content URLs.
@@ -81,7 +68,7 @@ Notes:
   - JSON logs with `level`, `requestId`, `tenantId`, `workflowId`, and `connectorUsed` where available.
   - Sensitive fields (`password`, `token`, `secret`, `apiKey`, `authorization`) are redacted.
 - Request correlation:
-  - Every request gets `x-request-id` (propagated if provided, generated if missing).
+  - Every request gets `x-request-id` propagated if provided, generated if missing.
   - Error responses include `requestId`.
 - Health endpoints:
   - `GET /health/live`
@@ -107,7 +94,7 @@ Notes:
 - `RATE_LIMIT_ADMIN_MAX=120`
 
 ### Production Hardening TODOs
-1. Replace in-memory telemetry/rate-limit stores with distributed backing (Redis).
-2. Export metrics to a monitoring backend (OpenTelemetry/Azure Monitor).
-3. Add connector circuit breaker for repeated provider outages.
+1. Replace in-memory telemetry/rate-limit stores with distributed backing such as Redis.
+2. Export metrics to a monitoring backend such as OpenTelemetry or Azure Monitor.
+3. Add connector circuit breaker behavior for repeated provider outages.
 4. Implement Entra token validation and signed Teams webhook verification.

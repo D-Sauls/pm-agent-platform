@@ -7,3 +7,5 @@ coverage
 logs
 *.log
 .vscode
+backend/data/hr-import-store.json
+backend/data/onboarding-paths.json

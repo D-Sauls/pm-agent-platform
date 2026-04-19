@@ -16,7 +16,7 @@ export function TeamsAppShell() {
 
   return (
     <main style={{ padding: 16, fontFamily: "Segoe UI, sans-serif" }}>
-      <h1>Project Management Agent Assistant</h1>
+      <h1>Learning and Compliance Assistant</h1>
       <p>{isTeamsContext ? "Running in Teams" : "Running in Browser"}</p>
       <section style={{ display: "grid", gap: 16, gridTemplateColumns: "2fr 1fr" }}>
         <ChatPanel />

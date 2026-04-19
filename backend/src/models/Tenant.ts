@@ -1,7 +1,13 @@
-import type { ConnectorProvider } from "../../../connectors/baseConnector.js";
-
 export type LicenseStatus = "active" | "inactive" | "suspended";
 export type PlanType = "starter" | "professional" | "enterprise";
+export type ConnectorProvider =
+  | "microsoft-graph"
+  | "microsoft-project"
+  | "microsoft-planner"
+  | "planner"
+  | "clickup"
+  | "monday"
+  | "zoho";
 
 export interface Tenant {
   tenantId: string;

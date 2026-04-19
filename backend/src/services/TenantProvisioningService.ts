@@ -5,8 +5,7 @@ import type { LicenseService } from "./LicenseService.js";
 import type { TenantService } from "./TenantService.js";
 import type { ConnectorHealthService } from "./ConnectorHealthService.js";
 import type { PromptRegistryService } from "./PromptRegistryService.js";
-import type { PlanType } from "../models/Tenant.js";
-import type { ConnectorProvider } from "../../../connectors/baseConnector.js";
+import type { ConnectorProvider, PlanType } from "../models/Tenant.js";
 
 export interface ProvisionTenantInput {
   tenantId: string;

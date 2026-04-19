@@ -6,9 +6,6 @@
   },
   "include": [
     "src",
-    "../connectors",
-    "../models",
-    "../prompts",
-    "../services"
+    "../prompts"
   ]
 }

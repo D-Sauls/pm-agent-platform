@@ -2,7 +2,6 @@ import { Router } from "express";
 import { z } from "zod";
 import { agenticOrchestratorServiceV2 } from "../core/container.js";
 import { AppError } from "../core/errors/AppError.js";
-import { handleAgentResponse } from "../controllers/agentController.js";
 
 export const agentRoutes = Router();
 
@@ -12,8 +11,6 @@ const goalExecuteRequestSchema = z.object({
   message: z.string().min(1),
   metadata: z.record(z.unknown()).optional()
 });
-
-agentRoutes.post("/respond", handleAgentResponse);
 
 agentRoutes.post("/goal-execute", async (req, res, next) => {
   try {

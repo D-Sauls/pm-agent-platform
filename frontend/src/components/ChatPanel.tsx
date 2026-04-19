@@ -1,25 +1,20 @@
 import { FormEvent, useState } from "react";
 import { sendAssistantQuery } from "../api/client";
 
-interface WeeklyReportViewModel {
-  projectSummary: string;
-  achievementsThisPeriod: string[];
-  upcomingWork: string[];
-  risksIssues: string[];
-  dependencies: string[];
-  decisionsRequired: string[];
-  overallRagStatus: "Red" | "Amber" | "Green";
-}
-
 interface AssistantResponse {
-  operation: string;
-  connectorUsed?: string;
-  weeklyReport?: WeeklyReportViewModel;
+  response?: {
+    synthesizedSummary: string;
+    keyFindings: string[];
+    recommendedActions: string[];
+    warnings: string[];
+    workflowsExecuted: string[];
+  };
+  goalType?: string;
 }
 
-// Chat UI for weekly report requests.
+// Teams-friendly assistant panel backed by the planner-based agent endpoint.
 export function ChatPanel() {
-  const [message, setMessage] = useState("Generate weekly report");
+  const [message, setMessage] = useState("What training or compliance task should I complete next?");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AssistantResponse | null>(null);
@@ -30,14 +25,10 @@ export function ChatPanel() {
     setError(null);
 
     try {
-      const requestType = message.toLowerCase().includes("generate weekly report")
-        ? "weekly_highlight_report"
-        : undefined;
       const response = await sendAssistantQuery({
-        projectId: "project-alpha",
-        userInput: message,
-        deliveryMode: "HybridPrince2Agile",
-        requestType
+        tenantId: "tenant-acme",
+        message,
+        metadata: { surface: "teams" }
       });
 
       if (!response.ok) {
@@ -60,7 +51,7 @@ export function ChatPanel() {
         <input
           value={message}
           onChange={(event) => setMessage(event.target.value)}
-          placeholder="Type: Generate weekly report"
+          placeholder="Ask about training, policies, or compliance"
           style={{ padding: 8 }}
         />
         <button type="submit" disabled={loading}>
@@ -70,33 +61,12 @@ export function ChatPanel() {
 
       {error ? <p style={{ color: "#b00020" }}>{error}</p> : null}
 
-      {result?.weeklyReport ? (
+      {result?.response ? (
         <article style={{ marginTop: 12, border: "1px solid #d6d6d6", borderRadius: 8, padding: 12 }}>
-          <h3>Weekly Project Highlight Report</h3>
-          <p>
-            <strong>Connector:</strong> {result.connectorUsed ?? "internal-model"}
-          </p>
-          <p>
-            <strong>Project Summary:</strong> {result.weeklyReport.projectSummary}
-          </p>
-          <p>
-            <strong>Overall RAG Status:</strong> {result.weeklyReport.overallRagStatus}
-          </p>
-          <p>
-            <strong>Achievements This Period:</strong> {result.weeklyReport.achievementsThisPeriod.join("; ")}
-          </p>
-          <p>
-            <strong>Upcoming Work:</strong> {result.weeklyReport.upcomingWork.join("; ")}
-          </p>
-          <p>
-            <strong>Risks / Issues:</strong> {result.weeklyReport.risksIssues.join("; ")}
-          </p>
-          <p>
-            <strong>Dependencies:</strong> {result.weeklyReport.dependencies.join("; ")}
-          </p>
-          <p>
-            <strong>Decisions Required:</strong> {result.weeklyReport.decisionsRequired.join("; ")}
-          </p>
+          <h3>{result.goalType ?? "Assistant response"}</h3>
+          <p>{result.response.synthesizedSummary}</p>
+          <p><strong>Recommended actions:</strong> {result.response.recommendedActions.join("; ")}</p>
+          <p><strong>Workflows:</strong> {result.response.workflowsExecuted.join(", ")}</p>
         </article>
       ) : null}
     </section>

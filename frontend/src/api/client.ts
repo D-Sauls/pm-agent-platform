@@ -1,17 +1,13 @@
 export interface AssistantQuery {
-  projectId: string;
-  userInput: string;
-  deliveryMode: "Waterfall" | "AgileLean" | "HybridPrince2Agile";
-  requestType?:
-    | "weekly_highlight_report"
-    | "raid_extraction"
-    | "change_request_assessment"
-    | "next_pm_actions";
+  message: string;
+  tenantId?: string;
+  projectId?: string;
+  metadata?: Record<string, unknown>;
 }
 
-// Thin API client for backend agent endpoints.
+// Thin API client for the current planner-based assistant endpoint.
 export async function sendAssistantQuery(payload: AssistantQuery): Promise<Response> {
-  return fetch("/api/agent/respond", {
+  return fetch("/api/agent/goal-execute", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

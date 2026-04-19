@@ -1,9 +1,9 @@
-// Dashboard UI stub for project health and generated artifacts.
+// Lightweight Teams-side snapshot; full admin analytics remain in the admin portal.
 export function DashboardPanel() {
   return (
     <section style={{ border: "1px solid #ccc", padding: 12, borderRadius: 8 }}>
-      <h2>Project Dashboard</h2>
-      <p>Stub: Weekly highlights, RAID summaries, and change assessment cards.</p>
+      <h2>Learning Snapshot</h2>
+      <p>Ask the assistant about assigned courses, policy evidence, compliance actions, or onboarding progress.</p>
     </section>
   );
 }

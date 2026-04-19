@@ -9,8 +9,9 @@ import { knowledgeExplainPrompt } from "../../../prompts/knowledge_explain.js";
 import { projectSummaryPrompt } from "../../../prompts/project_summary.js";
 import { planningAssistantPrompt } from "../../../prompts/planning_assistant.js";
 import { weeklyTimeRecommendationsPrompt } from "../../../prompts/weekly_time_recommendations.js";
-import { DeliveryMode } from "../../../models/entities.js";
 import { OpenAiLlmClient, type LlmClient } from "../llm/LlmClient.js";
+
+export type PromptDeliveryMode = "Waterfall" | "AgileLean" | "HybridPrince2Agile";
 
 export type PromptTemplateKey =
   | "weekly_report"
@@ -42,7 +43,7 @@ const promptLibrary: Record<PromptTemplateKey, string> = {
 export class PromptEngine {
   constructor(private readonly llmClient: LlmClient = new OpenAiLlmClient()) {}
 
-  buildPrompt(template: PromptTemplateKey, mode: DeliveryMode, context: string): string {
+  buildPrompt(template: PromptTemplateKey, mode: PromptDeliveryMode, context: string): string {
     return `Delivery Mode: ${mode}\nTemplate: ${template}\n${promptLibrary[template]}\nContext:\n${context}`;
   }
 
