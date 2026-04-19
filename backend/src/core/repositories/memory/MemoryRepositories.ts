@@ -11,6 +11,8 @@ import type {
   ProjectRepository,
   PromptMappingRepository,
   ResourceRepository,
+  RoleProfileRepository,
+  OnboardingPathRepository,
   TenantRepository,
   TimeEntryQuery,
   TimeEntryRepository,
@@ -33,6 +35,7 @@ import type {
   HROverrideRecord,
   PolicyVersion
 } from "../../models/complianceModels.js";
+import type { OnboardingPath, RoleProfile } from "../../models/onboardingModels.js";
 
 export class MemoryTenantRepository implements TenantRepository {
   private data = new Map<string, Tenant>();
@@ -264,5 +267,41 @@ export class MemoryHROverrideRepository implements HROverrideRepository {
 
   async listByTenant(tenantId: string): Promise<HROverrideRecord[]> {
     return this.data.filter((record) => record.tenantId === tenantId);
+  }
+}
+
+export class MemoryRoleProfileRepository implements RoleProfileRepository {
+  private data = new Map<string, RoleProfile>();
+
+  async create(roleProfile: RoleProfile): Promise<RoleProfile> {
+    this.data.set(roleProfile.id, roleProfile);
+    return roleProfile;
+  }
+
+  async getById(tenantId: string, roleId: string): Promise<RoleProfile | null> {
+    const role = this.data.get(roleId) ?? null;
+    return role && role.tenantId === tenantId ? role : null;
+  }
+
+  async listByTenant(tenantId: string): Promise<RoleProfile[]> {
+    return Array.from(this.data.values()).filter((role) => role.tenantId === tenantId);
+  }
+}
+
+export class MemoryOnboardingPathRepository implements OnboardingPathRepository {
+  private data = new Map<string, OnboardingPath>();
+
+  async create(path: OnboardingPath): Promise<OnboardingPath> {
+    this.data.set(path.id, path);
+    return path;
+  }
+
+  async getById(tenantId: string, pathId: string): Promise<OnboardingPath | null> {
+    const path = this.data.get(pathId) ?? null;
+    return path && path.tenantId === tenantId ? path : null;
+  }
+
+  async listByTenant(tenantId: string): Promise<OnboardingPath[]> {
+    return Array.from(this.data.values()).filter((path) => path.tenantId === tenantId);
   }
 }

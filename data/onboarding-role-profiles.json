@@ -1,0 +1,9 @@
+[
+  {
+    "id": "role-finance-analyst",
+    "tenantId": "tenant-acme",
+    "roleName": "Finance Analyst",
+    "department": "Finance",
+    "description": "Analyst role responsible for controls, reporting, and monthly close support."
+  }
+]

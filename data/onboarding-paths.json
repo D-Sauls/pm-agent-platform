@@ -1,0 +1,17 @@
+[
+  {
+    "id": "onboarding-finance-analyst-v1",
+    "tenantId": "tenant-acme",
+    "roleId": "role-finance-analyst",
+    "courseIds": [
+      "course-finance-onboarding",
+      "course-security-awareness"
+    ],
+    "policyIds": [
+      "policy-finance-controls",
+      "policy-security-awareness"
+    ],
+    "estimatedDuration": 210,
+    "version": "v1"
+  }
+]

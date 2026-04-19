@@ -15,6 +15,7 @@ import type {
 } from "../models/complianceModels.js";
 import type { Resource, TimeEntry } from "../models/timeModels.js";
 import type { ConnectorConfig } from "../models/connectorModels.js";
+import type { OnboardingPath, RoleProfile } from "../models/onboardingModels.js";
 
 export interface TenantRepository {
   create(tenant: Tenant): Promise<Tenant>;
@@ -104,4 +105,16 @@ export interface ComplianceConfigRepository {
 export interface HROverrideRepository {
   append(record: HROverrideRecord): Promise<void>;
   listByTenant(tenantId: string): Promise<HROverrideRecord[]>;
+}
+
+export interface RoleProfileRepository {
+  create(roleProfile: RoleProfile): Promise<RoleProfile>;
+  getById(tenantId: string, roleId: string): Promise<RoleProfile | null>;
+  listByTenant(tenantId: string): Promise<RoleProfile[]>;
+}
+
+export interface OnboardingPathRepository {
+  create(path: OnboardingPath): Promise<OnboardingPath>;
+  getById(tenantId: string, pathId: string): Promise<OnboardingPath | null>;
+  listByTenant(tenantId: string): Promise<OnboardingPath[]>;
 }

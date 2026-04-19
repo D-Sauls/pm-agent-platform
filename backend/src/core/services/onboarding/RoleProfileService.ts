@@ -1,45 +1,40 @@
 import { AppError } from "../../errors/AppError.js";
 import type { RoleProfile } from "../../models/onboardingModels.js";
+import type { RoleProfileRepository } from "../../repositories/interfaces.js";
 
 export class RoleProfileService {
-  private readonly roles = new Map<string, RoleProfile>();
+  constructor(private readonly repository: RoleProfileRepository) {}
 
-  create(roleProfile: RoleProfile): RoleProfile {
-    if (this.roles.has(roleProfile.id)) {
+  async create(roleProfile: RoleProfile): Promise<RoleProfile> {
+    const existing = await this.repository.getById(roleProfile.tenantId, roleProfile.id);
+    if (existing) {
       throw new AppError("VALIDATION_ERROR", `Role profile ${roleProfile.id} already exists`, 409);
     }
-    this.roles.set(roleProfile.id, roleProfile);
-    return roleProfile;
+    return this.repository.create(roleProfile);
   }
 
-  getById(tenantId: string, roleId: string): RoleProfile {
-    const role = this.roles.get(roleId);
-    if (!role || role.tenantId !== tenantId) {
+  async getById(tenantId: string, roleId: string): Promise<RoleProfile> {
+    const role = await this.repository.getById(tenantId, roleId);
+    if (!role) {
       throw new AppError("PROJECT_NOT_FOUND", `Role profile ${roleId} not found`, 404);
     }
     return role;
   }
 
-  findByRole(tenantId: string, roleName: string, department?: string): RoleProfile | null {
+  async findByRole(tenantId: string, roleName: string, department?: string): Promise<RoleProfile | null> {
     const normalizedRole = roleName.toLowerCase();
     const normalizedDepartment = department?.toLowerCase();
+    const roles = await this.repository.listByTenant(tenantId);
     return (
-      Array.from(this.roles.values()).find(
+      roles.find(
         (role) =>
-          role.tenantId === tenantId &&
           role.roleName.toLowerCase() === normalizedRole &&
           (!normalizedDepartment || role.department.toLowerCase() === normalizedDepartment)
       ) ?? null
     );
   }
 
-  list(tenantId: string): RoleProfile[] {
-    return Array.from(this.roles.values()).filter((role) => role.tenantId === tenantId);
-  }
-
-  seed(roleProfiles: RoleProfile[]): void {
-    for (const roleProfile of roleProfiles) {
-      this.roles.set(roleProfile.id, roleProfile);
-    }
+  async list(tenantId: string): Promise<RoleProfile[]> {
+    return this.repository.listByTenant(tenantId);
   }
 }

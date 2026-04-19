@@ -14,8 +14,8 @@ export class OnboardingProgressService {
     private readonly policyService: PolicyService
   ) {}
 
-  calculateProgress(tenantId: string, userId: string, onboardingPathId: string): OnboardingProgress {
-    const path = this.onboardingPathService.getById(tenantId, onboardingPathId);
+  async calculateProgress(tenantId: string, userId: string, onboardingPathId: string): Promise<OnboardingProgress> {
+    const path = await this.onboardingPathService.getById(tenantId, onboardingPathId);
     const completedItems: string[] = [];
 
     for (const courseId of path.courseIds) {
@@ -47,9 +47,13 @@ export class OnboardingProgressService {
     };
   }
 
-  recommendNext(tenantId: string, userId: string, onboardingPathId: string): { nextCourseId: string | null; nextPolicyId: string | null; recommendation: string; completionPercentage: number } {
-    const progress = this.calculateProgress(tenantId, userId, onboardingPathId);
-    const path = this.onboardingPathService.getById(tenantId, onboardingPathId);
+  async recommendNext(
+    tenantId: string,
+    userId: string,
+    onboardingPathId: string
+  ): Promise<{ nextCourseId: string | null; nextPolicyId: string | null; recommendation: string; completionPercentage: number }> {
+    const progress = await this.calculateProgress(tenantId, userId, onboardingPathId);
+    const path = await this.onboardingPathService.getById(tenantId, onboardingPathId);
     const nextCourseId = path.courseIds.find((courseId) => progress.remainingItems.includes(courseId)) ?? null;
     const nextPolicyId = nextCourseId ? null : path.policyIds.find((policyId) => progress.remainingItems.includes(policyId)) ?? null;
 

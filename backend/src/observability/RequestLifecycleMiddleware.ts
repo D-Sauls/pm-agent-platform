@@ -28,7 +28,7 @@ export function requestLifecycleMiddleware(
 
     res.on("finish", () => {
       const responseTimeMs = Date.now() - start;
-      const tenantId = req.tenantContext?.tenant.tenantId ?? req.tenantId ?? req.params.tenantId;
+      const tenantId = req.tenantContext?.tenant.tenantId ?? req.tenantId ?? req.params?.tenantId;
       const workflowId = req.requestMetadata?.workflowId;
       const workflowType = req.requestMetadata?.workflowType;
       const connectorUsed = req.requestMetadata?.connectorUsed ?? null;

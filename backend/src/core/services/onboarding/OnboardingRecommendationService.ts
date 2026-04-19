@@ -15,16 +15,16 @@ export class OnboardingRecommendationService {
     private readonly complianceRequirementService: ComplianceRequirementService
   ) {}
 
-  recommend(tenantId: string, roleName: string, department?: string): {
+  async recommend(tenantId: string, roleName: string, department?: string): Promise<{
     roleProfile: RoleProfile | null;
     onboardingPath: OnboardingPath | null;
     recommendedCourses: Course[];
     requiredPolicies: ReturnType<PolicyService["lookupPolicies"]>;
     nextActions: string[];
-  } {
-    const roleProfile = this.roleProfileService.findByRole(tenantId, roleName, department);
+  }> {
+    const roleProfile = await this.roleProfileService.findByRole(tenantId, roleName, department);
     const onboardingPath = roleProfile
-      ? this.onboardingPathService.getByRoleId(tenantId, roleProfile.id)
+      ? await this.onboardingPathService.getByRoleId(tenantId, roleProfile.id)
       : null;
 
     const roleCourses = this.courseService

@@ -3,7 +3,7 @@ import test from "node:test";
 import { NextTrainingStepWorkflow } from "../src/core/services/workflows/nextTrainingStepWorkflow.js";
 
 const onboardingRecommendationService = {
-  recommend() {
+  async recommend() {
     return {
       onboardingPath: { id: "onboarding-finance" },
       recommendedCourses: [],
@@ -13,7 +13,7 @@ const onboardingRecommendationService = {
   }
 } as any;
 const onboardingProgressService = {
-  recommendNext() {
+  async recommendNext() {
     return {
       nextCourseId: "course-a",
       nextPolicyId: null,

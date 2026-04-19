@@ -3,12 +3,12 @@ import test from "node:test";
 import { OnboardingRecommendationService } from "../src/core/services/onboarding/OnboardingRecommendationService.js";
 
 const roleProfileService = {
-  findByRole() {
+  async findByRole() {
     return { id: "role-finance-analyst", tenantId: "tenant-acme", roleName: "Finance Analyst", department: "Finance", description: "Finance" };
   }
 } as any;
 const onboardingPathService = {
-  getByRoleId() {
+  async getByRoleId() {
     return { id: "onboarding-finance", tenantId: "tenant-acme", roleId: "role-finance-analyst", courseIds: ["course-a"], policyIds: ["policy-a"], estimatedDuration: 120, version: "v1" };
   }
 } as any;
@@ -21,7 +21,7 @@ const policyService = {
 } as any;
 const complianceRequirementService = { listRequirements() { return [{ appliesToRoles: ["Finance Analyst"] }]; } } as any;
 
-test("OnboardingRecommendationService builds next actions from role resources", () => {
+test("OnboardingRecommendationService builds next actions from role resources", async () => {
   const service = new OnboardingRecommendationService(
     roleProfileService,
     onboardingPathService,
@@ -29,7 +29,7 @@ test("OnboardingRecommendationService builds next actions from role resources", 
     policyService,
     complianceRequirementService
   );
-  const result = service.recommend("tenant-acme", "Finance Analyst", "Finance");
+  const result = await service.recommend("tenant-acme", "Finance Analyst", "Finance");
   assert.equal(result.recommendedCourses.length, 1);
   assert.equal(result.requiredPolicies.length, 1);
   assert.ok(result.nextActions[0]?.includes("Start"));

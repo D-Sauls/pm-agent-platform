@@ -23,14 +23,14 @@ export class NextTrainingStepWorkflow implements BaseWorkflow {
 
   async execute(context: AgentExecutionContext): Promise<WorkflowResult> {
     const metadata = metadataSchema.parse(context.metadata ?? {});
-    const recommendation = this.onboardingRecommendationService.recommend(
+    const recommendation = await this.onboardingRecommendationService.recommend(
       context.tenantContext.tenant.tenantId,
       metadata.role,
       metadata.department
     );
 
     const next = recommendation.onboardingPath
-      ? this.onboardingProgressService.recommendNext(
+      ? await this.onboardingProgressService.recommendNext(
           context.tenantContext.tenant.tenantId,
           metadata.userId,
           recommendation.onboardingPath.id

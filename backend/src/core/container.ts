@@ -1,9 +1,9 @@
 import { PromptEngine } from "../prompt/PromptEngine.js";
+import path from "node:path";
 import { stubConnectors } from "./connectors/StubConnectors.js";
 import { ClickUpConnector } from "./connectors/clickup/ClickUpConnector.js";
 import type { Project, Project as ProjectModel } from "./models/projectModels.js";
 import type { Course, KnowledgeDocument, LearningProgress, Policy } from "./models/knowledgeModels.js";
-import type { OnboardingPath, RoleProfile } from "./models/onboardingModels.js";
 import type {
   AcknowledgementRecord,
   ComplianceRequirement,
@@ -24,6 +24,10 @@ import {
   MemoryTimeEntryRepository,
   MemoryUsageLogRepository
 } from "./repositories/memory/MemoryRepositories.js";
+import {
+  FileOnboardingPathRepository,
+  FileRoleProfileRepository
+} from "./repositories/file/FileOnboardingRepositories.js";
 import { ConnectorRouter } from "./services/ConnectorRouter.js";
 import { ForecastService } from "./services/ForecastService.js";
 import { LicenseService } from "./services/LicenseService.js";
@@ -89,6 +93,14 @@ import { OnboardingRecommendationWorkflow } from "./services/workflows/onboardin
 import { NextTrainingStepWorkflow } from "./services/workflows/nextTrainingStepWorkflow.js";
 import { RoleKnowledgeLookupWorkflow } from "./services/workflows/roleKnowledgeLookupWorkflow.js";
 import { RequirementStatusWorkflow } from "./services/workflows/requirementStatusWorkflow.js";
+import { FileHrImportRepository } from "./services/hr/FileHrImportRepository.js";
+import { ImportAuditService } from "./services/hr/ImportAuditService.js";
+import { ImportMappingService } from "./services/hr/ImportMappingService.js";
+import { ImportValidationService } from "./services/hr/ImportValidationService.js";
+import { RoleAssignmentService } from "./services/hr/RoleAssignmentService.js";
+import { SpreadsheetParserService } from "./services/hr/SpreadsheetParserService.js";
+import { UserImportService } from "./services/hr/UserImportService.js";
+import { UserProvisioningService } from "./services/hr/UserProvisioningService.js";
 
 const tenantRepository = new MemoryTenantRepository();
 const licenseRepository = new MemoryLicenseRepository();
@@ -99,6 +111,15 @@ const promptMappingRepository = new MemoryPromptMappingRepository();
 const timeEntryRepository = new MemoryTimeEntryRepository();
 const resourceRepository = new MemoryResourceRepository();
 const connectorConfigRepository = new MemoryConnectorConfigRepository();
+const roleProfileRepository = new FileRoleProfileRepository(
+  path.resolve(process.cwd(), "data", "onboarding-role-profiles.json")
+);
+const onboardingPathRepository = new FileOnboardingPathRepository(
+  path.resolve(process.cwd(), "data", "onboarding-paths.json")
+);
+const hrImportRepository = new FileHrImportRepository(
+  path.resolve(process.cwd(), "data", "hr-import-store.json")
+);
 
 export const tenantServiceV2 = new TenantService(
   tenantRepository,
@@ -148,13 +169,36 @@ export const lessonServiceV2 = new LessonService(courseServiceV2, learningProgre
 export const policyServiceV2 = new PolicyService();
 export const knowledgeIndexServiceV2 = new KnowledgeIndexService();
 export const recommendationServiceV2 = new RecommendationService(courseServiceV2, policyServiceV2);
-export const roleProfileServiceV2 = new RoleProfileService();
-export const onboardingPathServiceV2 = new OnboardingPathService();
+export const roleProfileServiceV2 = new RoleProfileService(roleProfileRepository);
+export const onboardingPathServiceV2 = new OnboardingPathService(onboardingPathRepository);
 export const complianceConfigServiceV2 = new ComplianceConfigService();
 export const policyVersionServiceV2 = new PolicyVersionService();
 export const courseVersionServiceV2 = new CourseVersionService();
 export const acknowledgementServiceV2 = new AcknowledgementService();
 export const complianceRequirementServiceV2 = new ComplianceRequirementService();
+export const spreadsheetParserServiceV2 = new SpreadsheetParserService();
+export const importMappingServiceV2 = new ImportMappingService();
+export const importAuditServiceV2 = new ImportAuditService(hrImportRepository);
+export const importValidationServiceV2 = new ImportValidationService(
+  hrImportRepository,
+  roleProfileServiceV2
+);
+export const userProvisioningServiceV2 = new UserProvisioningService(hrImportRepository);
+export const roleAssignmentServiceV2 = new RoleAssignmentService(
+  roleProfileServiceV2,
+  onboardingPathServiceV2,
+  complianceRequirementServiceV2,
+  hrImportRepository
+);
+export const userImportServiceV2 = new UserImportService(
+  hrImportRepository,
+  spreadsheetParserServiceV2,
+  importMappingServiceV2,
+  importValidationServiceV2,
+  userProvisioningServiceV2,
+  roleAssignmentServiceV2,
+  importAuditServiceV2
+);
 export const onboardingRecommendationServiceV2 = new OnboardingRecommendationService(
   roleProfileServiceV2,
   onboardingPathServiceV2,
@@ -515,26 +559,6 @@ void (async () => {
       applicableRoles: ["Finance Analyst", "Engineering", "Operations"]
     }
   ];
-  const roleProfiles: RoleProfile[] = [
-    {
-      id: "role-finance-analyst",
-      tenantId: "tenant-acme",
-      roleName: "Finance Analyst",
-      department: "Finance",
-      description: "Analyst role responsible for controls, reporting, and monthly close support."
-    }
-  ];
-  const onboardingPaths: OnboardingPath[] = [
-    {
-      id: "onboarding-finance-analyst-v1",
-      tenantId: "tenant-acme",
-      roleId: "role-finance-analyst",
-      courseIds: ["course-finance-onboarding", "course-security-awareness"],
-      policyIds: ["policy-finance-controls", "policy-security-awareness"],
-      estimatedDuration: 210,
-      version: "v1"
-    }
-  ];
   const progressEntries: LearningProgress[] = [
     {
       userId: "user-fin-1",
@@ -640,8 +664,6 @@ void (async () => {
     await connectorConfigRepository.upsert(config);
   }
   courseServiceV2.seed(courses);
-  roleProfileServiceV2.seed(roleProfiles);
-  onboardingPathServiceV2.seed(onboardingPaths);
   policyServiceV2.seed(policies);
   knowledgeIndexServiceV2.indexCourses(courses);
   knowledgeIndexServiceV2.indexPolicies(policies);
@@ -687,7 +709,9 @@ export const repositories = {
   promptMappingRepository,
   connectorConfigRepository,
   timeEntryRepository,
-  resourceRepository
+  resourceRepository,
+  roleProfileRepository,
+  onboardingPathRepository
 };
 
 

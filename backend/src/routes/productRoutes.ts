@@ -1211,7 +1211,7 @@ productRoutes.get("/onboarding/path", resolveTenant, validateLicense, async (req
       department: req.query.department ? String(req.query.department) : undefined,
       query: req.query.query ? String(req.query.query) : undefined
     });
-    const recommendation = onboardingRecommendationServiceV2.recommend(parsed.tenantId, parsed.role, parsed.department);
+    const recommendation = await onboardingRecommendationServiceV2.recommend(parsed.tenantId, parsed.role, parsed.department);
     req.requestMetadata = { requestType: "onboarding_path_get", workflowType: "knowledge_domain" };
     res.json(recommendation);
   } catch (error) {
@@ -1228,12 +1228,12 @@ productRoutes.get("/onboarding/progress", resolveTenant, validateLicense, async 
       department: req.query.department ? String(req.query.department) : undefined,
       query: req.query.query ? String(req.query.query) : undefined
     });
-    const recommendation = onboardingRecommendationServiceV2.recommend(parsed.tenantId, parsed.role, parsed.department);
+    const recommendation = await onboardingRecommendationServiceV2.recommend(parsed.tenantId, parsed.role, parsed.department);
     const progress = recommendation.onboardingPath
-      ? onboardingProgressServiceV2.calculateProgress(parsed.tenantId, parsed.userId, recommendation.onboardingPath.id)
+      ? await onboardingProgressServiceV2.calculateProgress(parsed.tenantId, parsed.userId, recommendation.onboardingPath.id)
       : null;
     const nextStep = recommendation.onboardingPath
-      ? onboardingProgressServiceV2.recommendNext(parsed.tenantId, parsed.userId, recommendation.onboardingPath.id)
+      ? await onboardingProgressServiceV2.recommendNext(parsed.tenantId, parsed.userId, recommendation.onboardingPath.id)
       : null;
     req.requestMetadata = { requestType: "onboarding_progress_get", workflowType: "knowledge_domain" };
     res.json({ recommendation, progress, nextStep });
