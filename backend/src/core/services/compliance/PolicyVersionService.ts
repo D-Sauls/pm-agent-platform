@@ -42,7 +42,13 @@ export class PolicyVersionService {
       record.subjectId === policyId &&
       record.subjectVersionId !== currentVersion.id &&
       record.status === "completed"
-        ? { ...record, status: "invalidated" }
+        ? {
+            ...record,
+            id: `invalidated-${record.id}-${currentVersion.id}`,
+            status: "invalidated",
+            recordedAt: new Date(),
+            notes: `Superseded by policy version ${currentVersion.id}`
+          }
         : record
     );
   }

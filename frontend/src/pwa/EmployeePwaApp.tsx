@@ -116,7 +116,7 @@ export function EmployeePwaApp() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.userId}|${session.tenantId}|pm`,
+          Authorization: `Bearer ${session.sessionToken}`,
           "x-tenant-id": session.tenantId
         },
         body: JSON.stringify(payload)
@@ -376,7 +376,8 @@ export function EmployeePwaApp() {
       userId: String(formData.get("userId") || "user-finance-analyst"),
       displayName: String(formData.get("displayName") || "Avery Johnson"),
       role: String(formData.get("role") || "Finance Analyst"),
-      department: String(formData.get("department") || "Finance")
+      department: String(formData.get("department") || "Finance"),
+      sessionToken: String(formData.get("sessionToken") || "")
     };
     saveSession(nextSession);
     setSession(nextSession);
@@ -425,6 +426,10 @@ export function EmployeePwaApp() {
             <label>
               Department
               <input name="department" defaultValue="Finance" />
+            </label>
+            <label>
+              Activation session token
+              <input name="sessionToken" placeholder="Paste activation session token" required />
             </label>
             <button type="submit">Enter workspace</button>
           </form>

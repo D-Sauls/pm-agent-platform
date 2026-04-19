@@ -4,12 +4,20 @@ import { licenseService, tenantService } from "../context/platformContext.js";
 // Resolves tenant context and enforces license policy for every tenant-scoped request.
 export function tenantMiddleware(req: Request, res: Response, next: NextFunction): void {
   const headerTenantId = req.header("x-tenant-id");
-  const tenantId = headerTenantId ?? req.authUser?.defaultTenantId;
+  const tenantId = req.authUser?.defaultTenantId ?? headerTenantId;
 
   if (!tenantId) {
     res.status(400).json({
       code: "VALIDATION_ERROR",
       message: "Missing tenantId. Set x-tenant-id header.",
+      requestId: req.requestId
+    });
+    return;
+  }
+  if (req.authUser?.defaultTenantId && headerTenantId && headerTenantId !== req.authUser.defaultTenantId) {
+    res.status(403).json({
+      code: "UNAUTHORIZED",
+      message: "Tenant context does not match authenticated session",
       requestId: req.requestId
     });
     return;

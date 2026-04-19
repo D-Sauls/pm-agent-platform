@@ -20,7 +20,7 @@ export class OnboardingProgressService {
 
     for (const courseId of path.courseIds) {
       const course = this.courseService.getCourseById(tenantId, courseId);
-      const progress = this.learningProgressService.calculateCourseProgress(userId, course);
+      const progress = this.learningProgressService.calculateCourseProgress(tenantId, userId, course);
       if (progress.status === "completed") {
         completedItems.push(courseId);
       }

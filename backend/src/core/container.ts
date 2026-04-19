@@ -227,28 +227,6 @@ export const weeklyReportWorkflow = new WeeklyReportWorkflow(
   reportingEngineV2
 );
 export const workflowRegistry = new WorkflowRegistry();
-workflowRegistry.register(new WeeklyReportWorkflowV2(reportingEngineV2));
-workflowRegistry.register(new RaidExtractionWorkflow(new PromptEngine()));
-workflowRegistry.register(new ChangeAssessmentWorkflow(new PromptEngine()));
-workflowRegistry.register(new DeliveryAdvisorWorkflow(new PromptEngine()));
-workflowRegistry.register(new ForecastWorkflow(forecastServiceV2, new PromptEngine()));
-workflowRegistry.register(
-  new WeeklyTimeReportWorkflow(
-    timeEntryServiceV2,
-    resourceServiceV2,
-    effortSummaryServiceV2,
-    new PromptEngine()
-  )
-);
-workflowRegistry.register(
-  new MonthlyBillingSummaryWorkflow(
-    timeEntryServiceV2,
-    resourceServiceV2,
-    effortSummaryServiceV2,
-    new PromptEngine()
-  )
-);
-workflowRegistry.register(new ProjectSummaryWorkflow(new PromptEngine()));
 workflowRegistry.register(new CourseRecommendationWorkflow(recommendationServiceV2));
 workflowRegistry.register(new OnboardingRecommendationWorkflow(onboardingRecommendationServiceV2));
 workflowRegistry.register(
@@ -561,6 +539,7 @@ void (async () => {
   ];
   const progressEntries: LearningProgress[] = [
     {
+      tenantId: "tenant-acme",
       userId: "user-fin-1",
       courseId: "course-finance-onboarding",
       moduleId: "module-finance-basics",

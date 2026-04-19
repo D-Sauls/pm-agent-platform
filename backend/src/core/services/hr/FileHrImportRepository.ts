@@ -9,6 +9,7 @@ import type {
   UserImportJob,
   UserImportRow
 } from "../../models/hrImportModels.js";
+import type { ComplianceStatus } from "../../models/complianceModels.js";
 
 const emptyState = (): HrImportState => ({
   jobs: [],
@@ -16,7 +17,8 @@ const emptyState = (): HrImportState => ({
   users: [],
   activationRecords: [],
   auditEvents: [],
-  assignments: []
+  assignments: [],
+  complianceStatuses: []
 });
 
 function reviveDates(state: HrImportState): HrImportState {
@@ -42,6 +44,12 @@ function reviveDates(state: HrImportState): HrImportState {
     auditEvents: state.auditEvents.map((event) => ({
       ...event,
       createdAt: new Date(event.createdAt)
+    })),
+    complianceStatuses: (state.complianceStatuses ?? []).map((status) => ({
+      ...status,
+      assignedAt: status.assignedAt ? new Date(status.assignedAt) : null,
+      dueDate: status.dueDate ? new Date(status.dueDate) : null,
+      completedAt: status.completedAt ? new Date(status.completedAt) : null
     }))
   };
 }
@@ -134,6 +142,13 @@ export class FileHrImportRepository {
     return user;
   }
 
+  updateUser(user: ProvisionedUser): ProvisionedUser {
+    const state = this.read();
+    state.users = state.users.map((existing) => (existing.id === user.id ? user : existing));
+    this.write(state);
+    return user;
+  }
+
   listUsers(tenantId: string): ProvisionedUser[] {
     return this.read().users.filter((user) => user.tenantId === tenantId);
   }
@@ -145,6 +160,21 @@ export class FileHrImportRepository {
     return record;
   }
 
+  updateActivationRecord(record: ActivationRecord): ActivationRecord {
+    const state = this.read();
+    state.activationRecords = state.activationRecords.map((existing) =>
+      existing.id === record.id ? record : existing
+    );
+    this.write(state);
+    return record;
+  }
+
+  findActivationRecordByTokenHash(tokenHash: string): ActivationRecord | null {
+    return (
+      this.read().activationRecords.find((record) => record.activationTokenHash === tokenHash) ?? null
+    );
+  }
+
   listActivationRecords(tenantId: string): ActivationRecord[] {
     return this.read().activationRecords.filter((record) => record.tenantId === tenantId);
   }
@@ -153,6 +183,30 @@ export class FileHrImportRepository {
     const state = this.read();
     state.assignments.push(outcome);
     this.write(state);
+  }
+
+  upsertComplianceStatuses(statuses: ComplianceStatus[]): void {
+    const state = this.read();
+    for (const status of statuses) {
+      const index = state.complianceStatuses.findIndex(
+        (existing) =>
+          existing.tenantId === status.tenantId &&
+          existing.userId === status.userId &&
+          existing.requirementId === status.requirementId
+      );
+      if (index >= 0) {
+        state.complianceStatuses[index] = status;
+      } else {
+        state.complianceStatuses.push(status);
+      }
+    }
+    this.write(state);
+  }
+
+  listComplianceStatuses(tenantId: string, userId?: string): ComplianceStatus[] {
+    return this.read().complianceStatuses.filter(
+      (status) => status.tenantId === tenantId && (!userId || status.userId === userId)
+    );
   }
 
   appendAudit(event: HrImportState["auditEvents"][number]): void {

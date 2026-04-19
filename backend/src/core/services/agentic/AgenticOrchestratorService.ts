@@ -142,31 +142,21 @@ export class AgenticOrchestratorService {
     projectId: string | undefined,
     tenantContext: Awaited<ReturnType<TenantContextService["resolve"]>>
   ): Promise<NormalizedProjectContext> {
-    if (projectId) {
-      return this.projectContextService.getProjectContext(tenantContext, projectId);
-    }
-
-    const projects = await this.projectRepository.listByTenant(tenantId);
-    const fallbackProject = projects[0];
-    if (fallbackProject) {
-      return this.projectContextService.resolveFromProject(tenantContext, fallbackProject);
-    }
-
     return {
       project: {
-        projectId: "agentic-goal-context",
+        projectId: "onboarding-learning-compliance-context",
         tenantId,
         sourceSystem: "internal",
-        name: "Agentic Goal Context",
+        name: "Onboarding Learning Compliance Context",
         deliveryMode: "hybrid",
-        status: "Unknown"
+        status: "Active"
       },
       tasks: [],
       milestones: [],
       risks: [],
       issues: [],
       dependencies: [],
-      statusSummary: "Unknown"
+      statusSummary: "Onboarding, learning, and compliance context only"
     };
   }
 }

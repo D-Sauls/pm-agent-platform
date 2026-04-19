@@ -101,8 +101,8 @@ export class DeterministicPlannerStrategy implements AgentPlannerStrategy {
           400
         );
       }
-      include("project_summary");
-      warnings.push("Planner fallback used: defaulted to project_summary.");
+      include("next_training_step");
+      warnings.push("Planner fallback used: defaulted to next_training_step.");
     }
 
     const bounded = selected.slice(0, maxSteps);

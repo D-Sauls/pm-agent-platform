@@ -36,6 +36,22 @@ export class RoleAssignmentService {
           user.department ?? undefined
         )
       : [];
+    const assignedAt = new Date();
+    this.repository.upsertComplianceStatuses(
+      complianceRequirements.map((requirement) => ({
+        tenantId: user.tenantId,
+        userId: user.id,
+        requirementId: requirement.id,
+        status: "assigned",
+        assignedAt,
+        dueDate:
+          requirement.dueInDays != null
+            ? new Date(assignedAt.getTime() + requirement.dueInDays * 86400_000)
+            : null,
+        completedAt: null,
+        lastAcknowledgementId: null
+      }))
+    );
 
     const outcome: RoleAssignmentOutcome = {
       userId: user.id,

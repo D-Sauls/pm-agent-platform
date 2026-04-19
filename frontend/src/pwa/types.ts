@@ -4,6 +4,7 @@ export interface EmployeeSession {
   displayName: string;
   role: string;
   department?: string;
+  sessionToken?: string;
 }
 
 export interface TenantBranding {

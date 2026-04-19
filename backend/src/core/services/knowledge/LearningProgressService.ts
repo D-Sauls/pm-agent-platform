@@ -4,7 +4,7 @@ export class LearningProgressService {
   private readonly progressEntries = new Map<string, LearningProgress>();
 
   recordProgress(progress: LearningProgress): LearningProgress {
-    const key = this.key(progress.userId, progress.courseId, progress.lessonId);
+    const key = this.key(progress.tenantId, progress.userId, progress.courseId, progress.lessonId);
     const next: LearningProgress = {
       ...progress,
       completionDate: progress.completionStatus === "completed" ? progress.completionDate ?? new Date() : null
@@ -13,13 +13,13 @@ export class LearningProgressService {
     return next;
   }
 
-  listProgressForUser(userId: string, courseId?: string): LearningProgress[] {
+  listProgressForUser(tenantId: string, userId: string, courseId?: string): LearningProgress[] {
     return Array.from(this.progressEntries.values()).filter(
-      (entry) => entry.userId === userId && (!courseId || entry.courseId === courseId)
+      (entry) => entry.tenantId === tenantId && entry.userId === userId && (!courseId || entry.courseId === courseId)
     );
   }
 
-  calculateCourseProgress(userId: string, course: Course): {
+  calculateCourseProgress(tenantId: string, userId: string, course: Course): {
     progressPercent: number;
     completedLessons: number;
     totalLessons: number;
@@ -28,7 +28,7 @@ export class LearningProgressService {
     const lessons = course.modules.flatMap((module) => module.lessons);
     const totalLessons = lessons.length;
     const completedLessons = lessons.filter((lesson) => {
-      const entry = this.progressEntries.get(this.key(userId, course.id, lesson.id));
+      const entry = this.progressEntries.get(this.key(tenantId, userId, course.id, lesson.id));
       return entry?.completionStatus === "completed";
     }).length;
 
@@ -39,7 +39,7 @@ export class LearningProgressService {
     return { progressPercent, completedLessons, totalLessons, status };
   }
 
-  private key(userId: string, courseId: string, lessonId: string): string {
-    return `${userId}:${courseId}:${lessonId}`;
+  private key(tenantId: string, userId: string, courseId: string, lessonId: string): string {
+    return `${tenantId}:${userId}:${courseId}:${lessonId}`;
   }
 }

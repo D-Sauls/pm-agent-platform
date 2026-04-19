@@ -14,6 +14,7 @@ const bodySchema = z.object({
   columnMapping: z.record(z.string()).optional(),
   config: z.record(z.unknown()).optional()
 });
+const maxImportBytes = 5 * 1024 * 1024;
 
 function inferFileType(fileName: string, explicit?: string): HrImportFileType {
   const type = explicit ?? fileName.split(".").pop()?.toLowerCase();
@@ -51,6 +52,7 @@ async function parseJobRequest(req: Request) {
     const fields = await readMultipart(req);
     const file = fields.file;
     if (!file?.data || !file.fileName) throw new Error("file is required.");
+    if (file.data.byteLength > maxImportBytes) throw new Error("HR import file exceeds 5MB limit.");
     return {
       tenantId: fields.tenantId?.value ?? "",
       fileName: fields.fileName?.value ?? file.fileName,
@@ -69,7 +71,11 @@ async function parseJobRequest(req: Request) {
     tenantId: parsed.data.tenantId,
     fileName: parsed.data.fileName,
     fileType: inferFileType(parsed.data.fileName, parsed.data.fileType),
-    fileContent: Buffer.from(parsed.data.fileContentBase64, "base64"),
+    fileContent: (() => {
+      const content = Buffer.from(parsed.data.fileContentBase64, "base64");
+      if (content.byteLength > maxImportBytes) throw new Error("HR import file exceeds 5MB limit.");
+      return content;
+    })(),
     columnMapping: parsed.data.columnMapping,
     config: parsed.data.config
   };

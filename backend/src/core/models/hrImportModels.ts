@@ -1,3 +1,5 @@
+import type { ComplianceStatus } from "./complianceModels.js";
+
 export type HrImportFileType = "csv" | "xlsx";
 export type ImportJobStatus =
   | "uploaded"
@@ -47,6 +49,7 @@ export interface ProvisionedUser {
   employmentType?: string | null;
   location?: string | null;
   accountStatus: AccountStatus;
+  passwordHash?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -141,4 +144,5 @@ export interface HrImportState {
     createdAt: Date;
   }>;
   assignments: RoleAssignmentOutcome[];
+  complianceStatuses: ComplianceStatus[];
 }

@@ -27,7 +27,7 @@ export class AcknowledgementService {
   }
 
   listByTenant(tenantId: string): AcknowledgementRecord[] {
-    return this.acknowledgements.filter((record) => record.tenantId === tenantId);
+    return this.acknowledgements.filter((record) => record.tenantId === tenantId).map((record) => ({ ...record }));
   }
 
   findHistory(filters: {
@@ -42,14 +42,14 @@ export class AcknowledgementService {
       if (filters.subjectType && record.subjectType !== filters.subjectType) return false;
       if (filters.subjectId && record.subjectId !== filters.subjectId) return false;
       return true;
-    });
+    }).map((record) => ({ ...record }));
   }
 
   replaceAcknowledgementsForTenant(tenantId: string, nextRecords: AcknowledgementRecord[]): void {
-    this.acknowledgements = [
-      ...this.acknowledgements.filter((record) => record.tenantId !== tenantId),
-      ...nextRecords
-    ];
+    const existingIds = new Set(this.acknowledgements.map((record) => record.id));
+    this.acknowledgements.push(
+      ...nextRecords.filter((record) => record.tenantId === tenantId && !existingIds.has(record.id))
+    );
   }
 
   private validateAcknowledgement(

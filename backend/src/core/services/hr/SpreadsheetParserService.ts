@@ -2,7 +2,8 @@ import zlib from "node:zlib";
 import type { HrImportFileType, ParsedSpreadsheet } from "../../models/hrImportModels.js";
 
 function normalizeCell(value: unknown): string {
-  return String(value ?? "").trim();
+  const normalized = String(value ?? "").trim();
+  return /^[=+\-@]/.test(normalized) ? `'${normalized}` : normalized;
 }
 
 function parseCsvLine(line: string): string[] {

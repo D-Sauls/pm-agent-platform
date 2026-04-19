@@ -1,4 +1,5 @@
 import { PromptEngine } from "../prompt/PromptEngine.js";
+import { randomUUID } from "node:crypto";
 import { Router } from "express";
 import { z } from "zod";
 import {
@@ -33,6 +34,8 @@ import {
   tenantContextServiceV2,
   timeEntryServiceV2,
   usageLogServiceV2,
+  userImportServiceV2,
+  userProvisioningServiceV2,
   weeklyReportWorkflow
 } from "../core/container.js";
 import { adminAuditService } from "../context/platformContext.js";
@@ -261,18 +264,16 @@ const complianceStatusQuerySchema = z.object({
 });
 const acknowledgementSchema = z.object({
   tenantId: z.string().min(1),
-  id: z.string().min(1),
-  userId: z.string().min(1),
   subjectType: z.enum(["policy", "course", "lesson"]),
   subjectId: z.string().min(1),
-  subjectVersionId: z.string().nullable().optional(),
-  acknowledgementType: z.enum(["opened", "completed", "accepted", "signed", "hr_override"]),
-  status: z.enum(["pending", "completed", "invalidated"]),
-  actorId: z.string().nullable().optional(),
-  actorRole: z.string().nullable().optional(),
-  ipAddress: z.string().nullable().optional(),
+  acknowledgementType: z.enum(["opened", "completed", "accepted", "signed"]),
   deviceInfo: z.string().nullable().optional(),
   notes: z.string().nullable().optional()
+}).strict();
+const activationSchema = z.object({
+  tenantId: z.string().min(1).optional(),
+  token: z.string().min(16),
+  password: z.string().min(8)
 });
 const hrOverrideSchema = z.object({
   tenantId: z.string().min(1),
@@ -355,8 +356,94 @@ const requirementStatusWorkflow = new RequirementStatusWorkflow(
   complianceConfigServiceV2
 );
 
+function requireEmployeeTenant(req: import("express").Request): string {
+  const tenantId = req.tenantContext?.tenant.tenantId ?? req.userContext?.tenantIdHint;
+  if (!tenantId) {
+    throw new AppError("TENANT_NOT_FOUND", "Tenant context missing", 400);
+  }
+  return tenantId;
+}
+
+function requireEmployeeUser(req: import("express").Request): string {
+  const userId = req.userContext?.userId;
+  if (!userId) {
+    throw new AppError("UNAUTHORIZED", "Authenticated employee context missing", 401);
+  }
+  return userId;
+}
+
+function currentSubjectVersion(subjectType: "policy" | "course" | "lesson", subjectId: string): string | null {
+  if (subjectType === "policy") {
+    return policyVersionServiceV2.getCurrentVersion(subjectId)?.id ?? null;
+  }
+  if (subjectType === "course") {
+    return courseVersionServiceV2.getCurrentVersion(subjectId)?.id ?? null;
+  }
+  return null;
+}
+
+function assertDownloadPolicy(req: import("express").Request, tenantId: string): void {
+  const config = complianceConfigServiceV2.getConfig(tenantId);
+  if (config.downloadPolicy === "allow_anywhere" || config.downloadPolicy === "authenticated_only") return;
+  const ip = req.ip ?? "";
+  const allowed = config.allowedIpRanges ?? [];
+  if (allowed.length > 0 && allowed.some((entry) => ip.includes(entry))) return;
+  throw new AppError(
+    "UNAUTHORIZED",
+    `Download policy ${config.downloadPolicy} does not allow access from this network`,
+    403
+  );
+}
+
+productRoutes.post("/auth/activate", async (req, res, next) => {
+  try {
+    const parsed = activationSchema.parse(req.body);
+    const result = userProvisioningServiceV2.completeActivation(parsed);
+    res.json({
+      user: {
+        id: result.user.id,
+        tenantId: result.user.tenantId,
+        employeeCode: result.user.employeeCode,
+        username: result.user.username,
+        accountStatus: result.user.accountStatus,
+        roleName: result.user.roleName,
+        department: result.user.department
+      },
+      sessionToken: result.sessionToken
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 productRoutes.use(authContextMiddleware);
 productRoutes.use(requestLoggingMiddleware(usageLogServiceV2));
+
+const retiredPmRoutes = [
+  "/projects/:projectId/context",
+  "/workflows/weekly-report",
+  "/workflows/raid-extraction",
+  "/workflows/change-assessment",
+  "/workflows/delivery-advisor",
+  "/workflows/project-summary",
+  "/workflows/forecast",
+  "/workflows/weekly-time-report",
+  "/workflows/monthly-billing-summary",
+  "/time-entries",
+  "/time/summary",
+  "/time/resource-summary",
+  "/connectors/clickup/health",
+  "/connectors/clickup/test-sync"
+];
+
+for (const route of retiredPmRoutes) {
+  productRoutes.all(route, (_req, res) => {
+    res.status(410).json({
+      code: "ROUTE_RETIRED",
+      message: "This legacy project-management route is not active in the onboarding platform."
+    });
+  });
+}
 
 productRoutes.get("/tenants/:tenantId/context", resolveTenant, validateLicense, async (req, res, next) => {
   try {
@@ -1204,11 +1291,12 @@ productRoutes.post("/workflows/role-knowledge-lookup", resolveTenant, validateLi
 
 productRoutes.get("/onboarding/path", resolveTenant, validateLicense, async (req, res, next) => {
   try {
+    const tenantId = requireEmployeeTenant(req);
     const parsed = onboardingLookupSchema.parse({
-      tenantId: String(req.query.tenantId ?? ""),
-      userId: req.query.userId ? String(req.query.userId) : undefined,
-      role: String(req.query.role ?? ""),
-      department: req.query.department ? String(req.query.department) : undefined,
+      tenantId,
+      userId: requireEmployeeUser(req),
+      role: String(req.query.role ?? req.userContext?.roleName ?? ""),
+      department: req.query.department ? String(req.query.department) : req.userContext?.department ?? undefined,
       query: req.query.query ? String(req.query.query) : undefined
     });
     const recommendation = await onboardingRecommendationServiceV2.recommend(parsed.tenantId, parsed.role, parsed.department);
@@ -1221,11 +1309,13 @@ productRoutes.get("/onboarding/path", resolveTenant, validateLicense, async (req
 
 productRoutes.get("/onboarding/progress", resolveTenant, validateLicense, async (req, res, next) => {
   try {
+    const tenantId = requireEmployeeTenant(req);
+    const userId = requireEmployeeUser(req);
     const parsed = onboardingLookupSchema.extend({ userId: z.string().min(1) }).parse({
-      tenantId: String(req.query.tenantId ?? ""),
-      userId: String(req.query.userId ?? ""),
-      role: String(req.query.role ?? ""),
-      department: req.query.department ? String(req.query.department) : undefined,
+      tenantId,
+      userId,
+      role: String(req.query.role ?? req.userContext?.roleName ?? ""),
+      department: req.query.department ? String(req.query.department) : req.userContext?.department ?? undefined,
       query: req.query.query ? String(req.query.query) : undefined
     });
     const recommendation = await onboardingRecommendationServiceV2.recommend(parsed.tenantId, parsed.role, parsed.department);
@@ -1318,7 +1408,7 @@ productRoutes.post("/learning/courses", resolveTenant, validateLicense, async (r
 
 productRoutes.get("/learning/courses", resolveTenant, validateLicense, async (req, res, next) => {
   try {
-    const tenantId = String(req.query.tenantId ?? "");
+    const tenantId = requireEmployeeTenant(req);
     const publishedOnly = String(req.query.publishedOnly ?? "true") !== "false";
     const courses = courseServiceV2.getCourseCatalog(tenantId, publishedOnly);
     req.requestMetadata = { requestType: "learning_courses_list", workflowType: "knowledge_domain" };
@@ -1330,7 +1420,7 @@ productRoutes.get("/learning/courses", resolveTenant, validateLicense, async (re
 
 productRoutes.get("/learning/courses/:courseId", resolveTenant, validateLicense, async (req, res, next) => {
   try {
-    const tenantId = String(req.query.tenantId ?? req.params.tenantId ?? req.body?.tenantId ?? "");
+    const tenantId = requireEmployeeTenant(req);
     const course = courseServiceV2.getCourseById(tenantId, req.params.courseId);
     req.requestMetadata = { requestType: "learning_course_get", workflowType: "knowledge_domain" };
     res.json(course);
@@ -1352,7 +1442,8 @@ productRoutes.post("/learning/courses/:courseId/publish", resolveTenant, validat
 
 productRoutes.get("/learning/lessons/:lessonId", resolveTenant, validateLicense, async (req, res, next) => {
   try {
-    const tenantId = String(req.query.tenantId ?? "");
+    const tenantId = requireEmployeeTenant(req);
+    assertDownloadPolicy(req, tenantId);
     const lesson = lessonServiceV2.getLesson(tenantId, req.params.lessonId);
     req.requestMetadata = { requestType: "learning_lesson_get", workflowType: "knowledge_domain" };
     res.json(lesson);
@@ -1363,8 +1454,11 @@ productRoutes.get("/learning/lessons/:lessonId", resolveTenant, validateLicense,
 
 productRoutes.post("/learning/progress", resolveTenant, validateLicense, async (req, res, next) => {
   try {
-    const parsed = progressTrackSchema.parse(req.body);
+    const tenantId = requireEmployeeTenant(req);
+    const userId = requireEmployeeUser(req);
+    const parsed = progressTrackSchema.parse({ ...req.body, tenantId, userId });
     const progress = lessonServiceV2.trackLessonProgress({
+      tenantId,
       userId: parsed.userId,
       courseId: parsed.courseId,
       moduleId: parsed.moduleId,
@@ -1380,9 +1474,11 @@ productRoutes.post("/learning/progress", resolveTenant, validateLicense, async (
 
 productRoutes.get("/learning/progress", resolveTenant, validateLicense, async (req, res, next) => {
   try {
-    const parsed = progressLookupSchema.parse(req.query);
+    const tenantId = requireEmployeeTenant(req);
+    const userId = requireEmployeeUser(req);
+    const parsed = progressLookupSchema.parse({ ...req.query, tenantId, userId });
     const course = courseServiceV2.getCourseById(parsed.tenantId, parsed.courseId);
-    const progress = learningProgressServiceV2.calculateCourseProgress(parsed.userId, course);
+    const progress = learningProgressServiceV2.calculateCourseProgress(parsed.tenantId, parsed.userId, course);
     req.requestMetadata = { requestType: "learning_progress_get", workflowType: "knowledge_domain" };
     res.json({ userId: parsed.userId, courseId: parsed.courseId, ...progress });
   } catch (error) {
@@ -1404,7 +1500,7 @@ productRoutes.post("/learning/policies", resolveTenant, validateLicense, async (
 
 productRoutes.get("/learning/policies", resolveTenant, validateLicense, async (req, res, next) => {
   try {
-    const tenantId = String(req.query.tenantId ?? "");
+    const tenantId = requireEmployeeTenant(req);
     const category = typeof req.query.category === "string" ? req.query.category : undefined;
     const tag = typeof req.query.tag === "string" ? req.query.tag : undefined;
     const role = typeof req.query.role === "string" ? req.query.role : undefined;
@@ -1419,7 +1515,8 @@ productRoutes.get("/learning/policies", resolveTenant, validateLicense, async (r
 
 productRoutes.get("/learning/recommendations", resolveTenant, validateLicense, async (req, res, next) => {
   try {
-    const parsed = recommendationRequestSchema.parse(req.query);
+    const tenantId = requireEmployeeTenant(req);
+    const parsed = recommendationRequestSchema.parse({ ...req.query, tenantId });
     const recommendations = recommendationServiceV2.recommendForRole(
       parsed.tenantId,
       parsed.role,
@@ -1434,7 +1531,8 @@ productRoutes.get("/learning/recommendations", resolveTenant, validateLicense, a
 
 productRoutes.get("/learning/knowledge/search", resolveTenant, validateLicense, async (req, res, next) => {
   try {
-    const parsed = knowledgeSearchSchema.parse(req.query);
+    const tenantId = requireEmployeeTenant(req);
+    const parsed = knowledgeSearchSchema.parse({ ...req.query, tenantId });
     const matches = knowledgeIndexServiceV2.search(parsed.tenantId, parsed.query, parsed.role);
     req.requestMetadata = { requestType: "learning_knowledge_search", workflowType: "knowledge_domain" };
     res.json({ tenantId: parsed.tenantId, query: parsed.query, matches });
@@ -1484,8 +1582,25 @@ productRoutes.get(
 
 productRoutes.get("/compliance/status", resolveTenant, validateLicense, async (req, res, next) => {
   try {
-    const parsed = complianceStatusQuerySchema.parse(req.query);
-    const statuses = complianceTrackingServiceV2.calculateStatuses({
+    const tenantId = requireEmployeeTenant(req);
+    const userId = requireEmployeeUser(req);
+    const parsed = complianceStatusQuerySchema.parse({
+      ...req.query,
+      tenantId,
+      userId,
+      role: req.query.role ?? req.userContext?.roleName ?? "Employee",
+      department: req.query.department ?? req.userContext?.department ?? undefined
+    });
+    const durableStatuses = userImportServiceV2.listComplianceStatuses(parsed.tenantId, parsed.userId);
+    const statuses = durableStatuses.length > 0 ? durableStatuses.map((status) => ({
+      ...status,
+      status:
+        status.status === "assigned" &&
+        status.dueDate &&
+        status.dueDate.getTime() < Date.now()
+          ? "overdue" as const
+          : status.status
+    })) : complianceTrackingServiceV2.calculateStatuses({
       tenantId: parsed.tenantId,
       userId: parsed.userId,
       requirements: complianceRequirementServiceV2.resolveApplicableRequirements(
@@ -1575,24 +1690,56 @@ productRoutes.get(
 
 productRoutes.post("/compliance/acknowledgements", resolveTenant, validateLicense, async (req, res, next) => {
   try {
-    const parsed = acknowledgementSchema.parse(req.body);
+    const tenantId = requireEmployeeTenant(req);
+    const userId = requireEmployeeUser(req);
+    const parsedRequest = acknowledgementSchema.safeParse(req.body);
+    if (!parsedRequest.success) {
+      throw new AppError("VALIDATION_ERROR", "Invalid acknowledgement payload", 400, {
+        issues: parsedRequest.error.issues
+      });
+    }
+    const parsed = parsedRequest.data;
     const signatureRequired = complianceRequirementServiceV2
-      .listRequirements(parsed.tenantId)
+      .listRequirements(tenantId)
       .some((requirement) => requirement.requirementId === parsed.subjectId && requirement.signatureRequired);
+    const subjectVersionId = currentSubjectVersion(parsed.subjectType, parsed.subjectId);
     const acknowledgement = acknowledgementServiceV2.recordAcknowledgement(
       {
-        ...parsed,
-        subjectVersionId: parsed.subjectVersionId ?? null,
-        actorId: parsed.actorId ?? null,
-        actorRole: parsed.actorRole ?? null,
-        ipAddress: parsed.ipAddress ?? null,
+        id: randomUUID(),
+        tenantId,
+        userId,
+        subjectType: parsed.subjectType,
+        subjectId: parsed.subjectId,
+        subjectVersionId,
+        acknowledgementType: parsed.acknowledgementType,
+        status: "completed",
+        actorId: userId,
+        actorRole: req.userContext?.role ?? "employee",
+        ipAddress: req.ip ?? null,
         deviceInfo: parsed.deviceInfo ?? null,
         notes: parsed.notes ?? null,
         recordedAt: new Date()
       },
-      complianceConfigServiceV2.getConfig(parsed.tenantId),
+      complianceConfigServiceV2.getConfig(tenantId),
       signatureRequired
     );
+    const existingStatuses = userImportServiceV2.listComplianceStatuses(tenantId, userId);
+    const matchingStatus = existingStatuses.find((status) => {
+      const requirement = complianceRequirementServiceV2
+        .listRequirements(tenantId)
+        .find((candidate) => candidate.id === status.requirementId);
+      return requirement?.requirementId === parsed.subjectId;
+    });
+    if (matchingStatus) {
+      userImportServiceV2.upsertComplianceStatuses([
+        {
+          ...matchingStatus,
+          status: "completed",
+          completedAt: acknowledgement.recordedAt,
+          lastAcknowledgementId: acknowledgement.id
+        }
+      ]);
+    }
     req.requestMetadata = { requestType: "compliance_acknowledgement_create", workflowType: "compliance" };
     res.status(201).json(acknowledgement);
   } catch (error) {
@@ -1625,8 +1772,8 @@ productRoutes.get(
 
 productRoutes.get("/compliance/my-acknowledgements", resolveTenant, validateLicense, async (req, res, next) => {
   try {
-    const tenantId = String(req.query.tenantId ?? "");
-    const userId = String(req.query.userId ?? req.userContext?.userId ?? "");
+    const tenantId = requireEmployeeTenant(req);
+    const userId = requireEmployeeUser(req);
     req.requestMetadata = { requestType: "compliance_my_acknowledgement_list", workflowType: "compliance" };
     res.json({
       tenantId,
@@ -1640,7 +1787,7 @@ productRoutes.get("/compliance/my-acknowledgements", resolveTenant, validateLice
 
 productRoutes.get("/compliance/config", resolveTenant, validateLicense, async (req, res, next) => {
   try {
-    const tenantId = String(req.query.tenantId ?? "");
+    const tenantId = requireEmployeeTenant(req);
     req.requestMetadata = { requestType: "compliance_config_get", workflowType: "compliance" };
     res.json({ tenantId, config: complianceConfigServiceV2.getConfig(tenantId) });
   } catch (error) {

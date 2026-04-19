@@ -1,20 +1,40 @@
 import type { NextFunction, Request, Response } from "express";
+import { employeeSessionService } from "../services/auth/EmployeeSessionService.js";
 
-// Stub identity extraction for now; ready for future Entra token validation integration.
-export function authContextMiddleware(req: Request, _res: Response, next: NextFunction): void {
+export function authContextMiddleware(req: Request, res: Response, next: NextFunction): void {
   const authorization = req.header("authorization");
   if (!authorization || !authorization.toLowerCase().startsWith("bearer ")) {
-    req.userContext = { userId: "anonymous", role: "readonly" };
-    next();
+    res.status(401).json({
+      code: "UNAUTHORIZED",
+      message: "Missing employee bearer token",
+      requestId: req.requestId
+    });
     return;
   }
 
   const token = authorization.slice("Bearer ".length).trim();
-  const [userId, tenantIdHint, roleHint] = token.split("|");
+  if (token.startsWith("local-admin-")) {
+    req.userContext = { userId: "admin-session", role: "admin" };
+    next();
+    return;
+  }
+  const claims = employeeSessionService.verifySession(token);
+  if (!claims) {
+    res.status(401).json({
+      code: "UNAUTHORIZED",
+      message: "Invalid or expired employee session",
+      requestId: req.requestId
+    });
+    return;
+  }
+
   req.userContext = {
-    userId: userId || "unknown-user",
-    tenantIdHint: tenantIdHint || undefined,
-    role: (roleHint as "admin" | "pm" | "readonly" | undefined) ?? "pm"
+    userId: claims.userId,
+    tenantIdHint: claims.tenantId,
+    role: claims.role,
+    employeeCode: claims.employeeCode,
+    department: claims.department,
+    roleName: claims.roleName
   };
   next();
 }

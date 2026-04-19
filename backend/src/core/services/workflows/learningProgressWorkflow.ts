@@ -23,7 +23,11 @@ export class LearningProgressWorkflow implements BaseWorkflow {
   async execute(context: AgentExecutionContext): Promise<WorkflowResult> {
     const metadata = metadataSchema.parse(context.metadata ?? {});
     const course = this.courseService.getCourseById(context.tenantContext.tenant.tenantId, metadata.courseId);
-    const progress = this.learningProgressService.calculateCourseProgress(metadata.userId, course);
+    const progress = this.learningProgressService.calculateCourseProgress(
+      context.tenantContext.tenant.tenantId,
+      metadata.userId,
+      course
+    );
 
     const result: LearningProgressResult = {
       workflowId: this.id,

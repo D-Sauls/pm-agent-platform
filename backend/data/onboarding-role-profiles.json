@@ -1,1 +1,16 @@
-[]
+[
+  {
+    "id": "role-hr-import-1776614204990",
+    "tenantId": "tenant-acme",
+    "roleName": "Kitchen Trainer",
+    "department": "Kitchen",
+    "description": "Training role for HR import tests."
+  },
+  {
+    "id": "role-hr-import-1776614491656",
+    "tenantId": "tenant-acme",
+    "roleName": "Kitchen Trainer",
+    "department": "Kitchen",
+    "description": "Training role for HR import tests."
+  }
+]

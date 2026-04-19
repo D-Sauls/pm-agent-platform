@@ -17,7 +17,10 @@ declare global {
       userContext?: {
         userId: string;
         tenantIdHint?: string;
-        role: "admin" | "pm" | "readonly";
+        role: "employee" | "manager" | "admin" | "readonly";
+        employeeCode?: string;
+        department?: string | null;
+        roleName?: string | null;
       };
       tenantContext?: TenantContext;
       requestMetadata?: {

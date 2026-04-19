@@ -59,6 +59,7 @@ export interface KnowledgeDocument {
 }
 
 export interface LearningProgress {
+  tenantId: string;
   userId: string;
   courseId: string;
   moduleId: string;

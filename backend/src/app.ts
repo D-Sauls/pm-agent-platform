@@ -56,9 +56,9 @@ export function createApp() {
   );
 
   app.use("/api/agent", authenticateUser, tenantMiddleware, agentRoutes);
-  app.use("/api", productRoutes);
-  app.use("/api/teams", teamsRoutes);
   app.use("/api/admin", adminRoutes);
+  app.use("/api/teams", teamsRoutes);
+  app.use("/api", productRoutes);
   app.use("/admin", adminRoutes);
 
   app.get("/health/live", (_req, res) => {

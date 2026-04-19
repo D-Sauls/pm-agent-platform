@@ -20,9 +20,12 @@ function writeCache<T>(key: string, value: T): void {
 }
 
 function authHeaders(session: EmployeeSession): Headers {
+  if (!session.sessionToken) {
+    throw new Error("Employee session token is required. Activate the account before loading the PWA.");
+  }
   return new Headers({
     "Content-Type": "application/json",
-    Authorization: `Bearer ${session.userId}|${session.tenantId}|pm`,
+    Authorization: `Bearer ${session.sessionToken}`,
     "x-tenant-id": session.tenantId
   });
 }
@@ -210,7 +213,6 @@ export async function askAssistant(session: EmployeeSession, message: string) {
     headers: authHeaders(session),
     body: JSON.stringify({
       tenantId: session.tenantId,
-      projectId: "project-alpha",
       message,
       metadata: {
         role: session.role,

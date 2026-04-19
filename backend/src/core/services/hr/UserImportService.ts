@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { ComplianceStatus } from "../../models/complianceModels.js";
 import type {
   ColumnMapping,
   HrImportFileType,
@@ -122,6 +123,14 @@ export class UserImportService {
     const job = this.getJob(tenantId, jobId);
     if (!job) return null;
     return { job, rows: this.repository.listRows(jobId) };
+  }
+
+  listComplianceStatuses(tenantId: string, userId?: string): ComplianceStatus[] {
+    return this.repository.listComplianceStatuses(tenantId, userId);
+  }
+
+  upsertComplianceStatuses(statuses: ComplianceStatus[]): void {
+    this.repository.upsertComplianceStatuses(statuses);
   }
 
   async process(

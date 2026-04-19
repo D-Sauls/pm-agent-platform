@@ -6,6 +6,7 @@ import type {
   UserImportRow
 } from "../../models/hrImportModels.js";
 import type { FileHrImportRepository } from "./FileHrImportRepository.js";
+import { employeeSessionService } from "../auth/EmployeeSessionService.js";
 
 function hashSecret(secret: string): string {
   const salt = randomBytes(16).toString("hex");
@@ -54,6 +55,7 @@ export class UserProvisioningService {
       employmentType: mapped.employmentType ?? null,
       location: mapped.location ?? null,
       accountStatus: config.activationMode === "activation_link" ? "pending_activation" : "pending_activation",
+      passwordHash: null,
       createdAt: now,
       updatedAt: now
     };
@@ -95,5 +97,54 @@ export class UserProvisioningService {
       activatedAt: null,
       createdAt: now
     });
+  }
+
+  completeActivation(input: {
+    token: string;
+    password: string;
+    tenantId?: string;
+  }): { user: ProvisionedUser; sessionToken: string } {
+    const tokenHash = hashToken(input.token);
+    const record = this.repository.findActivationRecordByTokenHash(tokenHash);
+    if (!record || (input.tenantId && record.tenantId !== input.tenantId)) {
+      throw new Error("Invalid activation token.");
+    }
+    if (record.activatedAt) {
+      throw new Error("Activation token has already been used.");
+    }
+    if (record.expiresAt && record.expiresAt.getTime() < Date.now()) {
+      throw new Error("Activation token has expired.");
+    }
+    const user = this.repository.listUsers(record.tenantId).find((candidate) => candidate.id === record.userId);
+    if (!user) {
+      throw new Error("Activation user not found.");
+    }
+    if (input.password.length < 8) {
+      throw new Error("Password must be at least 8 characters.");
+    }
+
+    const updatedUser: ProvisionedUser = {
+      ...user,
+      accountStatus: "active",
+      passwordHash: hashSecret(input.password),
+      updatedAt: new Date()
+    };
+    this.repository.updateUser(updatedUser);
+    this.repository.updateActivationRecord({
+      ...record,
+      activatedAt: new Date()
+    });
+
+    return {
+      user: updatedUser,
+      sessionToken: employeeSessionService.issueSession({
+        userId: updatedUser.id,
+        tenantId: updatedUser.tenantId,
+        role: "employee",
+        employeeCode: updatedUser.employeeCode,
+        department: updatedUser.department,
+        roleName: updatedUser.roleName
+      })
+    };
   }
 }

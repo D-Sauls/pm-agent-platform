@@ -1,4 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
+import { employeeSessionService } from "../core/services/auth/EmployeeSessionService.js";
 
 // Minimal authentication middleware for API gateway flow.
 export function authenticateUser(req: Request, res: Response, next: NextFunction): void {
@@ -22,10 +23,24 @@ export function authenticateUser(req: Request, res: Response, next: NextFunction
     return;
   }
 
-  req.authUser = {
-    userId: token,
-    // Optional fallback if tenant is encoded in token as "userId|tenantId".
-    defaultTenantId: token.includes("|") ? token.split("|")[1] : undefined
+  const claims = employeeSessionService.verifySession(token);
+  if (!claims) {
+    res.status(401).json({
+      code: "UNAUTHORIZED",
+      message: "Invalid or expired employee session",
+      requestId: req.requestId
+    });
+    return;
+  }
+
+  req.authUser = { userId: claims.userId, defaultTenantId: claims.tenantId };
+  req.userContext = {
+    userId: claims.userId,
+    tenantIdHint: claims.tenantId,
+    role: claims.role,
+    employeeCode: claims.employeeCode,
+    department: claims.department,
+    roleName: claims.roleName
   };
 
   next();
