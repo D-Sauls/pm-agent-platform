@@ -42,42 +42,44 @@ export function FeatureFlagsPage({ adminRole }: FeatureFlagsPageProps) {
         Tenant:
         <input value={tenantId} onChange={(e) => setTenantId(e.target.value)} />
       </label>
-      {globalFlags.map((flag) => (
-        <article key={flag.key} style={{ border: "1px solid #d8d8d8", borderRadius: 8, padding: 12, marginTop: 8 }}>
-          <p>
-            <strong>{flag.key}</strong> - {flag.description}
-          </p>
-          <p>
-            Default: {String(flag.defaultEnabled)} | Tenant Override: {String(tenantFlags[flag.key])} |
-            Effective: {String(effectiveFlags[flag.key])}
-          </p>
-          {adminRole === "superadmin" ? (
-            <>
-              <button
-                onClick={async () => {
-                  await postAdminJson(`/feature-flags/${tenantId}`, {
-                    flagKey: flag.key,
-                    enabled: !tenantFlags[flag.key]
-                  });
-                  await load();
-                }}
-              >
-                Toggle Tenant Flag
-              </button>{" "}
-              <button
-                onClick={async () => {
-                  await postAdminJson(`/feature-flags/default/${flag.key}`, {
-                    enabled: !flag.defaultEnabled
-                  });
-                  await load();
-                }}
-              >
-                Toggle Global Default
-              </button>
-            </>
-          ) : null}
-        </article>
-      ))}
+      <div className="admin-stack admin-stack--spaced">
+        {globalFlags.map((flag) => (
+          <article key={flag.key} className="admin-card">
+            <p>
+              <strong>{flag.key}</strong> - {flag.description}
+            </p>
+            <p>
+              Default: {String(flag.defaultEnabled)} | Tenant Override: {String(tenantFlags[flag.key])} |
+              Effective: {String(effectiveFlags[flag.key])}
+            </p>
+            {adminRole === "superadmin" ? (
+              <>
+                <button
+                  onClick={async () => {
+                    await postAdminJson(`/feature-flags/${tenantId}`, {
+                      flagKey: flag.key,
+                      enabled: !tenantFlags[flag.key]
+                    });
+                    await load();
+                  }}
+                >
+                  Toggle Tenant Flag
+                </button>{" "}
+                <button
+                  onClick={async () => {
+                    await postAdminJson(`/feature-flags/default/${flag.key}`, {
+                      enabled: !flag.defaultEnabled
+                    });
+                    await load();
+                  }}
+                >
+                  Toggle Global Default
+                </button>
+              </>
+            ) : null}
+          </article>
+        ))}
+      </div>
     </section>
   );
 }

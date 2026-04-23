@@ -1,8 +1,6 @@
 import { Router } from "express";
 import {
   agenticOrchestratorServiceV2,
-  agentOrchestratorV2,
-  repositories,
   usageLogServiceV2
 } from "../core/container.js";
 import { AdaptiveCardRenderer } from "../integrations/teams/AdaptiveCardRenderer.js";
@@ -12,13 +10,11 @@ import { TeamsMessageRouter } from "../integrations/teams/TeamsMessageRouter.js"
 
 const controller = new TeamsBotController(
   new TeamsAuthService(),
-  new TeamsMessageRouter(repositories.projectRepository),
+  new TeamsMessageRouter(),
   {
-    execute: (input) => agentOrchestratorV2.execute(input),
     goalExecute: (input) =>
       agenticOrchestratorServiceV2.executeGoal({
         tenantId: input.tenantId,
-        projectId: input.projectId,
         message: input.message,
         metadata: input.metadata
       })

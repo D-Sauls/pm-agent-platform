@@ -30,7 +30,7 @@ export function loadEnvConfig(source: EnvSource = process.env) {
     appEnv,
     nodeEnv,
     port: readNumber(source.PORT, 4000),
-    databaseUrl: source.DATABASE_URL ?? (appEnv === "local" ? "file:./data/pm-agent-local.db" : ""),
+    databaseUrl: source.DATABASE_URL ?? (appEnv === "local" ? "file:./data/onboarding-local.db" : ""),
     keyVaultUri: source.KEYVAULT_URI ?? "",
     openAiApiKey: source.OPENAI_API_KEY ?? "",
     openAiModel: source.OPENAI_MODEL ?? "gpt-4.1-mini",

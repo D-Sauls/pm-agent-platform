@@ -7,30 +7,21 @@ import type { WorkflowResult } from "../src/core/services/workflows/baseWorkflow
 import { WorkflowRegistry } from "../src/core/services/workflows/workflowRegistry.js";
 import {
   MemoryLicenseRepository,
-  MemoryProjectRepository,
   MemoryPromptMappingRepository,
   MemoryTenantRepository
 } from "../src/core/repositories/memory/MemoryRepositories.js";
-import { ConnectorRouter } from "../src/core/services/ConnectorRouter.js";
 import { LicenseService } from "../src/core/services/LicenseService.js";
-import { ProjectContextService } from "../src/core/services/ProjectContextService.js";
 import { TenantContextService } from "../src/core/services/TenantContextService.js";
 import { TenantService } from "../src/core/services/TenantService.js";
-import { stubConnectors } from "../src/core/connectors/StubConnectors.js";
 
 test("AgenticOrchestratorService executes planned steps in sequence", async () => {
   const tenantRepository = new MemoryTenantRepository();
   const licenseRepository = new MemoryLicenseRepository();
   const promptMappingRepository = new MemoryPromptMappingRepository();
-  const projectRepository = new MemoryProjectRepository();
 
   const tenantService = new TenantService(tenantRepository, licenseRepository, promptMappingRepository);
   const licenseService = new LicenseService(licenseRepository, tenantRepository);
   const tenantContextService = new TenantContextService(tenantService, licenseService);
-  const projectContextService = new ProjectContextService(
-    projectRepository,
-    new ConnectorRouter(stubConnectors)
-  );
 
   await tenantService.createTenant({
     tenantId: "tenant-test",
@@ -38,8 +29,8 @@ test("AgenticOrchestratorService executes planned steps in sequence", async () =
     status: "active",
     licenseStatus: "active",
     planType: "professional",
-    defaultPromptVersion: "weekly_report:v1",
-    enabledConnectors: ["clickup"],
+    defaultPromptVersion: "onboarding_assistant:v1",
+    enabledConnectors: ["sharepoint"],
     featureFlags: []
   });
   await licenseRepository.upsert({
@@ -50,19 +41,10 @@ test("AgenticOrchestratorService executes planned steps in sequence", async () =
     trialEndsAt: null,
     lastValidatedAt: null
   });
-  await projectRepository.upsert({
-    projectId: "project-test",
-    tenantId: "tenant-test",
-    sourceSystem: "clickup",
-    externalProjectId: "ext-test",
-    name: "Test Project",
-    deliveryMode: "hybrid"
-  });
-
   const registry = new WorkflowRegistry();
   const order: string[] = [];
   const makeWorkflow = (
-    id: "project_summary" | "delivery_advisor"
+    id: "next_training_step" | "onboarding_recommendation"
   ): any => ({
     id,
     name: id,
@@ -72,10 +54,10 @@ test("AgenticOrchestratorService executes planned steps in sequence", async () =
       order.push(id);
       return {
         workflowId: id,
-        resultType: id === "project_summary" ? "project_summary" : "delivery_advisor",
+        resultType: id,
         data: {
-          projectOverview: `${id} overview`,
-          recommendedActions: [`${id} action`],
+          recommendation: `${id} guidance`,
+          nextActions: [`${id} action`],
           warnings: []
         } as any,
         generatedAt: new Date(),
@@ -85,25 +67,22 @@ test("AgenticOrchestratorService executes planned steps in sequence", async () =
     }
   });
 
-  registry.register(makeWorkflow("project_summary"));
-  registry.register(makeWorkflow("delivery_advisor"));
+  registry.register(makeWorkflow("next_training_step"));
+  registry.register(makeWorkflow("onboarding_recommendation"));
 
   const orchestrator = new AgenticOrchestratorService(
     new AgentPlannerService(registry),
     registry,
     tenantContextService,
-    projectContextService,
-    projectRepository,
     new ResultSynthesisService()
   );
 
   const result = await orchestrator.executeGoal({
     tenantId: "tenant-test",
-    projectId: "project-test",
-    message: "Give me project overview and what should I do next"
+    message: "What should I do next in my onboarding path?"
   });
 
   assert.ok(result.stepExecutions.length >= 1);
-  assert.equal(order[0], "project_summary");
+  assert.equal(order[0], "next_training_step");
   assert.ok(result.response.synthesizedSummary.length > 0);
 });

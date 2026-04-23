@@ -1,37 +1,27 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { TeamsMessageRouter } from "../src/integrations/teams/TeamsMessageRouter.js";
-import type { ProjectRepository } from "../src/core/repositories/interfaces.js";
 
-class MockProjectRepo implements ProjectRepository {
-  async upsert(project: any): Promise<any> {
-    return project;
-  }
-  async getById(): Promise<any> {
-    return null;
-  }
-  async listByTenant(tenantId: string): Promise<any[]> {
-    return [{ projectId: `${tenantId}-project-1` }];
-  }
-}
-
-test("TeamsMessageRouter parses explicit project token", async () => {
-  const router = new TeamsMessageRouter(new MockProjectRepo() as ProjectRepository);
+test("TeamsMessageRouter preserves onboarding assistant message context", async () => {
+  const router = new TeamsMessageRouter();
   const result = await router.route("tenant-acme", {
     type: "message",
-    text: "project project-alpha generate weekly report"
+    id: "activity-1",
+    text: "What should I do next for onboarding?",
+    conversation: { id: "conversation-1" }
   });
 
-  assert.equal(result.projectId, "project-alpha");
-  assert.ok(result.message.includes("generate weekly report"));
+  assert.equal(result.tenantId, "tenant-acme");
+  assert.equal(result.message, "What should I do next for onboarding?");
+  assert.equal(result.metadata?.source, "teams");
+  assert.equal(result.metadata?.conversationId, "conversation-1");
 });
 
-test("TeamsMessageRouter falls back to default tenant project", async () => {
-  const router = new TeamsMessageRouter(new MockProjectRepo() as ProjectRepository);
-  const result = await router.route("tenant-acme", {
-    type: "message",
-    text: "summarize this project"
-  });
+test("TeamsMessageRouter rejects empty messages", async () => {
+  const router = new TeamsMessageRouter();
 
-  assert.equal(result.projectId, "tenant-acme-project-1");
+  await assert.rejects(
+    () => router.route("tenant-acme", { type: "message", text: " " }),
+    /Teams message text is required/
+  );
 });

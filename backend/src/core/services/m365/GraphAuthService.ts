@@ -13,26 +13,29 @@ interface TokenResponse {
 export class GraphAuthService {
   private readonly appTokenCache = new Map<string, GraphAuthSession>();
 
-  constructor(private readonly fetcher: typeof fetch = fetch) {}
+  constructor(
+    private readonly fetcher: typeof fetch = fetch,
+    private readonly config = env
+  ) {}
 
   buildAdminConsentUrl(state: string, tenantId = "common"): string {
-    if (!env.graphClientId || !env.graphRedirectUri) {
+    if (!this.config.graphClientId || !this.config.graphRedirectUri) {
       throw new AppError("CONNECTOR_AUTH_FAILED", "Microsoft Graph client configuration is missing.", 500);
     }
 
     const url = new URL(`https://login.microsoftonline.com/${tenantId}/adminconsent`);
-    url.searchParams.set("client_id", env.graphClientId);
-    url.searchParams.set("redirect_uri", env.graphRedirectUri);
+    url.searchParams.set("client_id", this.config.graphClientId);
+    url.searchParams.set("redirect_uri", this.config.graphRedirectUri);
     url.searchParams.set("state", state);
     return url.toString();
   }
 
-  async exchangeAuthorizationCode(code: string, tenantId = "common", redirectUri = env.graphRedirectUri): Promise<GraphAuthSession> {
+  async exchangeAuthorizationCode(code: string, tenantId = "common", redirectUri = this.config.graphRedirectUri): Promise<GraphAuthSession> {
     return this.requestDelegatedToken(
       tenantId,
       new URLSearchParams({
-        client_id: env.graphClientId,
-        client_secret: env.graphClientSecret,
+        client_id: this.config.graphClientId,
+        client_secret: this.config.graphClientSecret,
         grant_type: "authorization_code",
         code,
         redirect_uri: redirectUri,
@@ -45,8 +48,8 @@ export class GraphAuthService {
     return this.requestDelegatedToken(
       tenantId,
       new URLSearchParams({
-        client_id: env.graphClientId,
-        client_secret: env.graphClientSecret,
+        client_id: this.config.graphClientId,
+        client_secret: this.config.graphClientSecret,
         grant_type: "refresh_token",
         refresh_token: refreshToken,
         scope: "https://graph.microsoft.com/.default offline_access"
@@ -54,19 +57,19 @@ export class GraphAuthService {
     );
   }
 
-  async getAppAccessToken(tenantId = env.graphDefaultTenantId): Promise<string> {
+  async getAppAccessToken(tenantId = this.config.graphDefaultTenantId): Promise<string> {
     const cached = this.appTokenCache.get(tenantId);
     if (cached && cached.expiresAt.getTime() > Date.now() + 60_000) {
       return cached.accessToken;
     }
 
-    if (!env.graphClientId || !env.graphClientSecret) {
+    if (!this.config.graphClientId || !this.config.graphClientSecret) {
       throw new AppError("CONNECTOR_AUTH_FAILED", "Microsoft Graph client credentials are missing.", 500);
     }
 
     const body = new URLSearchParams({
-      client_id: env.graphClientId,
-      client_secret: env.graphClientSecret,
+      client_id: this.config.graphClientId,
+      client_secret: this.config.graphClientSecret,
       scope: "https://graph.microsoft.com/.default",
       grant_type: "client_credentials"
     });

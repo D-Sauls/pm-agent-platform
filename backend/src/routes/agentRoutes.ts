@@ -7,7 +7,6 @@ export const agentRoutes = Router();
 
 const goalExecuteRequestSchema = z.object({
   tenantId: z.string().min(1).optional(),
-  projectId: z.string().optional(),
   message: z.string().min(1),
   metadata: z.record(z.unknown()).optional()
 });
@@ -28,11 +27,17 @@ agentRoutes.post("/goal-execute", async (req, res, next) => {
     }
 
     const executionStart = Date.now();
+    const userContext = req.userContext;
     const result = await agenticOrchestratorServiceV2.executeGoal({
       tenantId,
-      projectId: parsed.projectId,
       message: parsed.message,
-      metadata: parsed.metadata
+      metadata: {
+        ...(parsed.metadata ?? {}),
+        userId: userContext?.userId,
+        role: userContext?.roleName ?? userContext?.role,
+        department: userContext?.department,
+        employeeCode: userContext?.employeeCode
+      }
     });
 
     req.requestMetadata = {

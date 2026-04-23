@@ -1,11 +1,13 @@
 import { AdminApp } from "./admin/AdminApp";
 import { EmployeePwaApp } from "./pwa/EmployeePwaApp";
+import { resolveTenantRuntime } from "./pwa/runtime";
 import { resolveAppSurface } from "./surface";
 import { TeamsAppShell } from "./teams/TeamsAppShell";
 
-// App entry for admin, employee PWA, and Teams tab surfaces.
 export function App() {
-  const surface = resolveAppSurface(window.location.pathname);
+  const runtime = resolveTenantRuntime(window.location);
+  const surface = resolveAppSurface(runtime.surfacePath);
+
   if (surface === "admin") {
     return <AdminApp />;
   }

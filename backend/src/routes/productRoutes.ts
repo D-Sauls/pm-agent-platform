@@ -275,6 +275,11 @@ const activationSchema = z.object({
   token: z.string().min(16),
   password: z.string().min(8)
 });
+const employeeLoginSchema = z.object({
+  tenantId: z.string().min(1).optional(),
+  username: z.string().min(1),
+  password: z.string().min(8)
+});
 const hrOverrideSchema = z.object({
   tenantId: z.string().min(1),
   id: z.string().min(1),
@@ -405,9 +410,42 @@ productRoutes.post("/auth/activate", async (req, res, next) => {
         tenantId: result.user.tenantId,
         employeeCode: result.user.employeeCode,
         username: result.user.username,
+        firstName: result.user.firstName,
+        lastName: result.user.lastName,
         accountStatus: result.user.accountStatus,
         roleName: result.user.roleName,
         department: result.user.department
+      },
+      sessionToken: result.sessionToken
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+productRoutes.post("/auth/login", async (req, res, next) => {
+  try {
+    const parsed = employeeLoginSchema.parse(req.body);
+    const tenantId = parsed.tenantId ?? req.header("x-tenant-id");
+    if (!tenantId) {
+      throw new AppError("TENANT_NOT_FOUND", "Tenant context missing", 400);
+    }
+    const result = userProvisioningServiceV2.authenticate({
+      tenantId,
+      username: parsed.username,
+      password: parsed.password
+    });
+    res.json({
+      user: {
+        id: result.user.id,
+        tenantId: result.user.tenantId,
+        employeeCode: result.user.employeeCode,
+        username: result.user.username,
+        firstName: result.user.firstName,
+        lastName: result.user.lastName,
+        roleName: result.user.roleName,
+        department: result.user.department,
+        accountStatus: result.user.accountStatus
       },
       sessionToken: result.sessionToken
     });
@@ -429,6 +467,7 @@ const retiredPmRoutes = [
   "/workflows/forecast",
   "/workflows/weekly-time-report",
   "/workflows/monthly-billing-summary",
+  "/agent/execute",
   "/time-entries",
   "/time/summary",
   "/time/resource-summary",
@@ -2290,6 +2329,8 @@ productRoutes.post("/connectors/clickup/test-sync", resolveTenant, validateLicen
     next(error);
   }
 });
+
+
 
 
 

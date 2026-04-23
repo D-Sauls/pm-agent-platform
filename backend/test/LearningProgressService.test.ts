@@ -41,6 +41,7 @@ test("LearningProgressService calculates course completion percentage", () => {
   });
 
   progressService.recordProgress({
+    tenantId: "tenant-acme",
     userId: "user-1",
     courseId: "course-1",
     moduleId: "module-1",
@@ -48,7 +49,7 @@ test("LearningProgressService calculates course completion percentage", () => {
     completionStatus: "completed"
   });
 
-  const summary = progressService.calculateCourseProgress("user-1", course);
+  const summary = progressService.calculateCourseProgress("tenant-acme", "user-1", course);
   assert.equal(summary.completedLessons, 1);
   assert.equal(summary.totalLessons, 2);
   assert.equal(summary.progressPercent, 50);

@@ -2,7 +2,6 @@ import type { WorkflowId } from "../services/workflows/baseWorkflow.js";
 
 export interface AgentGoalRequest {
   tenantId: string;
-  projectId?: string;
   message: string;
   metadata?: Record<string, unknown>;
 }

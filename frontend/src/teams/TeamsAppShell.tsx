@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { app } from "@microsoft/teams-js";
 import { ChatPanel } from "../components/ChatPanel";
-import { DashboardPanel } from "../components/DashboardPanel";
 
 // Hosts the assistant experience inside Teams while remaining browser-friendly.
 export function TeamsAppShell() {
@@ -15,12 +14,13 @@ export function TeamsAppShell() {
   }, []);
 
   return (
-    <main style={{ padding: 16, fontFamily: "Segoe UI, sans-serif" }}>
-      <h1>Learning and Compliance Assistant</h1>
-      <p>{isTeamsContext ? "Running in Teams" : "Running in Browser"}</p>
-      <section style={{ display: "grid", gap: 16, gridTemplateColumns: "2fr 1fr" }}>
+    <main className="teams-assistant-shell">
+      <header className="teams-assistant-shell__header">
+        <h1>Learning and Compliance Assistant</h1>
+        <p>{isTeamsContext ? "Running in Teams" : "Running in Browser"}</p>
+      </header>
+      <section className="teams-assistant-shell__body">
         <ChatPanel />
-        <DashboardPanel />
       </section>
     </main>
   );

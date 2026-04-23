@@ -3,9 +3,9 @@ import type { FeatureFlag, TenantFeatureFlags } from "../models/FeatureFlag.js";
 // Abstraction for feature flag storage; can later be backed by Azure App Configuration.
 export class FeatureFlagService {
   private globalFlags: FeatureFlag[] = [
-    { key: "weeklyReportV2", description: "Enable weekly report v2 formatting", defaultEnabled: true },
-    { key: "raidAutoExtraction", description: "Enable RAID extraction suggestions", defaultEnabled: true },
-    { key: "deliveryAdvisorBeta", description: "Enable beta delivery advisor workflow", defaultEnabled: false }
+    { key: "assistantPromptV2", description: "Enable improved onboarding assistant prompt", defaultEnabled: true },
+    { key: "hrImportPreview", description: "Enable HR import dry-run and row preview", defaultEnabled: true },
+    { key: "complianceEvidenceReview", description: "Enable compliance evidence review queues", defaultEnabled: false }
   ];
 
   private tenantFlags = new Map<string, TenantFeatureFlags>();

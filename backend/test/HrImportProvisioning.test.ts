@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
+import { readFile, rm, writeFile } from "node:fs/promises";
+import type { Server } from "node:http";
 import test from "node:test";
 import { createApp } from "../src/app.js";
 import {
@@ -9,6 +11,31 @@ import {
 } from "../src/core/container.js";
 import { SpreadsheetParserService } from "../src/core/services/hr/SpreadsheetParserService.js";
 import { ImportMappingService } from "../src/core/services/hr/ImportMappingService.js";
+
+const persistentTestFiles = [
+  new URL("../data/onboarding-role-profiles.json", import.meta.url),
+  new URL("../data/onboarding-paths.json", import.meta.url)
+];
+
+async function snapshotPersistentFiles(): Promise<() => Promise<void>> {
+  const snapshots = await Promise.all(
+    persistentTestFiles.map(async (fileUrl) => {
+      try {
+        return { fileUrl, existed: true, contents: await readFile(fileUrl, "utf8") };
+      } catch {
+        return { fileUrl, existed: false, contents: "" };
+      }
+    })
+  );
+
+  return async () => {
+    await Promise.all(
+      snapshots.map((snapshot) =>
+        snapshot.existed ? writeFile(snapshot.fileUrl, snapshot.contents, "utf8") : rm(snapshot.fileUrl, { force: true })
+      )
+    );
+  };
+}
 
 async function loginAsLocalAdmin(base: string): Promise<string> {
   const response = await fetch(`${base}/api/admin/auth/login`, {
@@ -90,29 +117,32 @@ test("HR column mapping infers common headings", () => {
 });
 
 test("HR import routes are admin protected and process valid rows safely", async () => {
-  await roleProfileServiceV2.create({
-    id: `role-hr-import-${Date.now()}`,
-    tenantId: "tenant-acme",
-    roleName: "Kitchen Trainer",
-    department: "Kitchen",
-    description: "Training role for HR import tests."
-  }).catch(() => undefined);
+  const restorePersistentFiles = await snapshotPersistentFiles();
+  let server: Server | undefined;
 
-  const roles = await roleProfileServiceV2.list("tenant-acme");
-  const role = roles.find((item) => item.roleName === "Kitchen Trainer")!;
-  await onboardingPathServiceV2.create({
-    id: `path-hr-import-${Date.now()}`,
-    tenantId: "tenant-acme",
-    roleId: role.id,
-    courseIds: ["course-security-awareness"],
-    policyIds: ["policy-security-awareness"],
-    estimatedDuration: 45,
-    version: "v1"
-  }).catch(() => undefined);
-
-  const app = createApp();
-  const server = app.listen(0);
   try {
+    await roleProfileServiceV2.create({
+      id: `role-hr-import-${Date.now()}`,
+      tenantId: "tenant-acme",
+      roleName: "Kitchen Trainer",
+      department: "Kitchen",
+      description: "Training role for HR import tests."
+    }).catch(() => undefined);
+
+    const roles = await roleProfileServiceV2.list("tenant-acme");
+    const role = roles.find((item) => item.roleName === "Kitchen Trainer")!;
+    await onboardingPathServiceV2.create({
+      id: `path-hr-import-${Date.now()}`,
+      tenantId: "tenant-acme",
+      roleId: role.id,
+      courseIds: ["course-security-awareness"],
+      policyIds: ["policy-security-awareness"],
+      estimatedDuration: 45,
+      version: "v1"
+    }).catch(() => undefined);
+
+    const app = createApp();
+    server = app.listen(0);
     const address = server.address();
     if (!address || typeof address === "string") throw new Error("Failed to resolve test port");
     const base = `http://127.0.0.1:${address.port}`;
@@ -165,6 +195,7 @@ test("HR import routes are admin protected and process valid rows safely", async
     const jobs = userImportServiceV2.listJobs("tenant-acme");
     assert.ok(jobs.some((job) => job.id === created.job.id));
   } finally {
-    server.close();
+    server?.close();
+    await restorePersistentFiles();
   }
 });

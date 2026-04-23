@@ -36,45 +36,22 @@ export function AdminLayout({
   children
 }: AdminLayoutProps) {
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "220px 1fr",
-        minHeight: "100vh",
-        fontFamily: "Segoe UI, sans-serif"
-      }}
-    >
-      <aside style={{ borderRight: "1px solid #d8d8d8", padding: 12 }}>
+    <div className="admin-shell">
+      <aside className="admin-shell__sidebar">
         <h2>Admin</h2>
         {navItems.filter((item) => roleAccess[user.role].includes(item.key)).map((item) => (
           <button
             key={item.key}
             type="button"
             onClick={() => onNavigate(item.key)}
-            style={{
-              display: "block",
-              width: "100%",
-              textAlign: "left",
-              marginBottom: 8,
-              padding: 8,
-              borderRadius: 6,
-              border: "1px solid #cfcfcf",
-              background: currentPage === item.key ? "#ecf3ff" : "#fff"
-            }}
+            className={currentPage === item.key ? "admin-shell__nav admin-shell__nav--active" : "admin-shell__nav"}
           >
             {item.label}
           </button>
         ))}
       </aside>
       <section>
-        <header
-          style={{
-            borderBottom: "1px solid #d8d8d8",
-            padding: 12,
-            display: "flex",
-            justifyContent: "space-between"
-          }}
-        >
+        <header className="admin-shell__header">
           <div>
             <strong>{user.displayName}</strong> ({user.role})
           </div>
@@ -82,7 +59,7 @@ export function AdminLayout({
             Logout
           </button>
         </header>
-        <main style={{ padding: 16 }}>{children}</main>
+        <main className="admin-shell__main">{children}</main>
       </section>
     </div>
   );

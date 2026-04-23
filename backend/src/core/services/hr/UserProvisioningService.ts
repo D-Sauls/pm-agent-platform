@@ -14,6 +14,14 @@ function hashSecret(secret: string): string {
   return `scrypt:${salt}:${hash}`;
 }
 
+function verifySecret(secret: string, passwordHash: string | null | undefined): boolean {
+  if (!passwordHash) return false;
+  const [algorithm, salt, hash] = passwordHash.split(":");
+  if (algorithm !== "scrypt" || !salt || !hash) return false;
+  const candidate = scryptSync(secret, salt, 64).toString("hex");
+  return candidate === hash;
+}
+
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
@@ -54,7 +62,7 @@ export class UserProvisioningService {
       startDate: mapped.startDate ? new Date(mapped.startDate) : null,
       employmentType: mapped.employmentType ?? null,
       location: mapped.location ?? null,
-      accountStatus: config.activationMode === "activation_link" ? "pending_activation" : "pending_activation",
+      accountStatus: "pending_activation",
       passwordHash: null,
       createdAt: now,
       updatedAt: now
@@ -144,6 +152,32 @@ export class UserProvisioningService {
         employeeCode: updatedUser.employeeCode,
         department: updatedUser.department,
         roleName: updatedUser.roleName
+      })
+    };
+  }
+
+  authenticate(input: {
+    tenantId: string;
+    username: string;
+    password: string;
+  }): { user: ProvisionedUser; sessionToken: string } {
+    const user = this.repository.findUserByUsername(input.tenantId, input.username);
+    if (!user || user.accountStatus !== "active") {
+      throw new Error("Invalid employee ID or password.");
+    }
+    if (!verifySecret(input.password, user.passwordHash)) {
+      throw new Error("Invalid employee ID or password.");
+    }
+
+    return {
+      user,
+      sessionToken: employeeSessionService.issueSession({
+        userId: user.id,
+        tenantId: user.tenantId,
+        role: "employee",
+        employeeCode: user.employeeCode,
+        department: user.department,
+        roleName: user.roleName
       })
     };
   }

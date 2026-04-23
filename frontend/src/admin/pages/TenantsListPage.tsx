@@ -53,12 +53,12 @@ export function TenantsListPage({ adminRole, onOpenTenant }: TenantsListPageProp
   }
 
   if (loading) return <p>Loading tenants...</p>;
-  if (error) return <p style={{ color: "#b00020" }}>{error}</p>;
+  if (error) return <p className="admin-error">{error}</p>;
 
   return (
     <section>
       <h2>Tenants</h2>
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+      <div className="admin-inline-form">
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
@@ -72,7 +72,7 @@ export function TenantsListPage({ adminRole, onOpenTenant }: TenantsListPageProp
         </select>
       </div>
       {tenants.length === 0 ? <p>No tenants found.</p> : null}
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <table className="admin-table">
         <thead>
           <tr>
             <th align="left">Tenant</th>

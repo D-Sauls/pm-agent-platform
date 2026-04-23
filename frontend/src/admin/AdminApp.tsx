@@ -38,7 +38,7 @@ export function AdminApp() {
   }, []);
 
   if (checkingSession) {
-    return <p style={{ padding: 16 }}>Loading admin session...</p>;
+    return <p className="admin-loading">Loading admin session...</p>;
   }
 
   if (!adminUser) {

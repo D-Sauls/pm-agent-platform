@@ -23,7 +23,7 @@ export class TenantService {
       planType: input.planType,
       createdDate: new Date().toISOString(),
       featureFlags: {},
-      promptVersion: "weekly_report:v1",
+      promptVersion: "onboarding_assistant:v1",
       connectorConfig: input.connectorConfig ?? { enabledConnectors: [] }
     };
     this.tenants.set(tenant.tenantId, tenant);
@@ -107,8 +107,8 @@ export class TenantService {
       organizationName: "Acme Corp",
       planType: "enterprise",
       connectorConfig: {
-        primaryConnector: "clickup",
-        enabledConnectors: ["clickup", "monday", "microsoft-planner"]
+        primaryConnector: "sharepoint",
+        enabledConnectors: ["microsoft-graph", "sharepoint", "teams"]
       }
     });
     this.createTenant({
@@ -116,8 +116,8 @@ export class TenantService {
       organizationName: "Beta Industries",
       planType: "starter",
       connectorConfig: {
-        primaryConnector: "zoho",
-        enabledConnectors: ["zoho"]
+        primaryConnector: "sharepoint",
+        enabledConnectors: ["microsoft-graph", "sharepoint"]
       }
     });
     this.setLicenseStatus("tenant-beta", "inactive");

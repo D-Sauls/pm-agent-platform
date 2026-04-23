@@ -51,8 +51,8 @@ export class TenantProvisioningService {
 
     const defaults = this.featureFlagService.getFlagsForTenant(input.tenantId);
     this.tenantService.setTenantFeatureFlags(input.tenantId, defaults.flags);
-    this.tenantService.setTenantPromptVersion(input.tenantId, "weekly_report:v1");
-    this.promptRegistryService.assignVersionToTenant(input.tenantId, "weekly_report", "v1");
+    this.tenantService.setTenantPromptVersion(input.tenantId, "onboarding_assistant:v1");
+    this.promptRegistryService.assignVersionToTenant(input.tenantId, "onboarding_assistant", "v1");
 
     const license = input.trialMode
       ? this.licenseService.setTrialMode(tenant, true)

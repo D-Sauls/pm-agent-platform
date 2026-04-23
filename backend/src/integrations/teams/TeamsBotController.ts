@@ -1,6 +1,5 @@
 import type { Request, Response } from "express";
 import type { UsageLogService } from "../../core/services/UsageLogService.js";
-import type { AgenticExecutionResponse } from "../../core/models/agenticModels.js";
 import type { AgentExecutor, TeamsActivity } from "./types.js";
 import { AdaptiveCardRenderer } from "./AdaptiveCardRenderer.js";
 import { TeamsAuthService } from "./TeamsAuthService.js";
@@ -32,20 +31,11 @@ export class TeamsBotController {
         teamsTenantId: user.teamsTenantId,
         teamsUserId: user.teamsUserId
       };
-      const useGoalExecution = this.shouldUseGoalExecution(route.message);
-      const execution = useGoalExecution && this.agentExecutor.goalExecute
-        ? await this.agentExecutor.goalExecute({
-            tenantId: route.tenantId,
-            projectId: route.projectId,
-            message: route.message,
-            metadata
-          })
-        : await this.agentExecutor.execute({
-            tenantId: route.tenantId,
-            projectId: route.projectId,
-            message: route.message,
-            metadata
-          });
+      const execution = await this.agentExecutor.goalExecute({
+        tenantId: route.tenantId,
+        message: route.message,
+        metadata
+      });
       const card = this.cardRenderer.render(execution);
       const workflowId = this.resolveWorkflowId(execution);
       const connectorUsed = this.resolveConnectorUsed(execution);
@@ -87,32 +77,13 @@ export class TeamsBotController {
     }
   };
 
-  private shouldUseGoalExecution(message: string): boolean {
-    const text = message.toLowerCase();
-    return [
-      "executive summary",
-      "delivery readiness",
-      "current project picture",
-      "on track and what should i do next",
-      "with forecast and risks",
-      "major blockers and billable trend"
-    ].some((phrase) => text.includes(phrase));
-  }
-
-  private resolveWorkflowId(execution: Awaited<ReturnType<NonNullable<AgentExecutor["goalExecute"]>>> | Awaited<ReturnType<AgentExecutor["execute"]>>): string {
-    if ("workflowId" in execution && typeof execution.workflowId === "string") {
-      return execution.workflowId;
-    }
+  private resolveWorkflowId(_execution: Awaited<ReturnType<AgentExecutor["goalExecute"]>>): string {
     return "agentic_goal";
   }
 
   private resolveConnectorUsed(
-    execution: Awaited<ReturnType<NonNullable<AgentExecutor["goalExecute"]>>> | Awaited<ReturnType<AgentExecutor["execute"]>>
+    execution: Awaited<ReturnType<AgentExecutor["goalExecute"]>>
   ): string {
-    if ("connectorUsed" in execution && typeof execution.connectorUsed === "string") {
-      return execution.connectorUsed;
-    }
-    const agentic = execution as AgenticExecutionResponse;
-    return agentic.response.workflowsExecuted.join(",");
+    return execution.response.workflowsExecuted.join(",");
   }
 }

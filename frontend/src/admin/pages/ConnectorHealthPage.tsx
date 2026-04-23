@@ -35,7 +35,7 @@ export function ConnectorHealthPage({ adminRole }: ConnectorHealthPageProps) {
     await load();
   }
 
-  if (error) return <p style={{ color: "#b00020" }}>{error}</p>;
+  if (error) return <p className="admin-error">{error}</p>;
 
   return (
     <section>
@@ -46,19 +46,21 @@ export function ConnectorHealthPage({ adminRole }: ConnectorHealthPageProps) {
         placeholder="Filter by tenant"
       />
       {rows.length === 0 ? <p>No connector health data available.</p> : null}
-      {rows.map((row) => (
-        <article key={`${row.tenantId}-${row.connectorName}`} style={{ border: "1px solid #d8d8d8", borderRadius: 8, padding: 12, marginBottom: 8 }}>
-          <p>
-            <strong>{row.tenantId}</strong> - {row.connectorName} ({row.status})
-          </p>
-          <p>Last sync: {row.lastSyncTime ?? "n/a"}</p>
-          <p>Last error: {row.lastError ?? "none"}</p>
-          <p>Last response time: {row.lastSuccessfulResponseTime ?? "n/a"} ms</p>
-          {adminRole !== "readonlyadmin" ? (
-            <button onClick={() => runHealthTest(row)}>Run Health Test</button>
-          ) : null}
-        </article>
-      ))}
+      <div className="admin-stack admin-stack--spaced">
+        {rows.map((row) => (
+          <article key={`${row.tenantId}-${row.connectorName}`} className="admin-card">
+            <p>
+              <strong>{row.tenantId}</strong> - {row.connectorName} ({row.status})
+            </p>
+            <p>Last sync: {row.lastSyncTime ?? "n/a"}</p>
+            <p>Last error: {row.lastError ?? "none"}</p>
+            <p>Last response time: {row.lastSuccessfulResponseTime ?? "n/a"} ms</p>
+            {adminRole !== "readonlyadmin" ? (
+              <button onClick={() => runHealthTest(row)}>Run Health Test</button>
+            ) : null}
+          </article>
+        ))}
+      </div>
     </section>
   );
 }

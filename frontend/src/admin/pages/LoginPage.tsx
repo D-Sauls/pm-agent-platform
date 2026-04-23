@@ -34,11 +34,11 @@ export function LoginPage({ onLoggedIn }: LoginPageProps) {
   }
 
   return (
-    <main style={{ maxWidth: 420, margin: "48px auto", fontFamily: "Segoe UI, sans-serif" }}>
+    <main className="admin-login">
       <h1>Admin Control Plane</h1>
       <p>Auth mode: {mode}</p>
       {mode === "local" ? (
-        <form onSubmit={handleSubmit} style={{ display: "grid", gap: 8 }}>
+        <form onSubmit={handleSubmit} className="admin-login__form">
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
           <input
             value={password}
@@ -53,7 +53,7 @@ export function LoginPage({ onLoggedIn }: LoginPageProps) {
       ) : (
         <p>Entra ID mode scaffolded. Interactive sign-in will be connected in the next phase.</p>
       )}
-      {error ? <p style={{ color: "#b00020" }}>{error}</p> : null}
+      {error ? <p className="admin-error">{error}</p> : null}
     </main>
   );
 }

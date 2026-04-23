@@ -13,7 +13,7 @@ export class DeterministicPlannerStrategy implements AgentPlannerStrategy {
   readonly mode = "deterministic" as const;
 
   plan(request: AgentGoalRequest, allowedWorkflows: WorkflowId[], maxSteps: number): ExecutionPlan {
-    const text = request.message.toLowerCase();
+    const text = this.normalize(request.message);
     const selected: WorkflowId[] = [];
     const warnings: string[] = [];
 
@@ -26,71 +26,56 @@ export class DeterministicPlannerStrategy implements AgentPlannerStrategy {
 
     const hasAny = (phrases: string[]): boolean => phrases.some((phrase) => text.includes(phrase));
 
-    if (hasAny(["executive", "leadership", "project picture", "overview", "summary"])) {
-      include("project_summary");
-    }
-    if (hasAny(["forecast", "on track", "slip", "capacity risk", "delivery trend"])) {
-      include("forecast");
-    }
-    if (hasAny(["what should i do next", "focus on", "blockers", "delivery health", "do next"])) {
-      include("delivery_advisor");
-    }
-    if (hasAny(["billable", "utilization", "time report", "billing summary"])) {
-      if (hasAny(["month", "monthly"])) {
-        include("monthly_billing_summary");
-      } else {
-        include("weekly_time_report");
-      }
-    }
-    if (hasAny(["weekly report", "highlight report", "status report"])) {
-      include("weekly_report");
-    }
-    if (hasAny(["change request", "scope change", "in scope", "change control"])) {
-      include("change_assessment");
-    }
-    if (hasAny(["extract raid", "risks and issues from notes", "assumptions and dependencies"])) {
-      include("raid_extraction");
-    }
-    if (hasAny(["recommend courses", "learning path", "training for role", "onboarding path"])) {
-      include("course_recommendation");
-    }
-    if (hasAny(["recommended onboarding", "role onboarding", "training checklist", "onboarding path"])) {
-      include("onboarding_recommendation");
-    }
-    if (hasAny(["what should i complete next", "next training step", "next onboarding step"])) {
+    if (hasAny(["what should i do next", "what should i complete next", "next training step", "next onboarding step", "do next"])) {
       include("next_training_step");
     }
-    if (hasAny(["what policies apply to my role", "role knowledge", "role policies", "role training resources"])) {
+
+    if (hasAny(["what am i missing", "compliance gaps", "overdue", "non compliant", "not compliant"])) {
+      include("compliance_audit");
+      include("requirement_status");
+    }
+
+    if (hasAny(["requirement status", "training status", "compliance status", "what is overdue for this user"])) {
+      include("requirement_status");
+    }
+
+    if (hasAny(["learning progress", "training progress", "course progress", "completion status", "how far am i"])) {
+      include("learning_progress");
+    }
+
+    if (hasAny(["what policies apply to my role", "role knowledge", "role policies", "role training resources", "why am i doing", "my role", "my job role"])) {
       include("role_knowledge_lookup");
+      include("onboarding_recommendation");
     }
-    if (hasAny(["find policy", "policy lookup", "required policy", "policy for"])) {
+
+    if (hasAny(["recommend courses", "learning path", "training for role", "onboarding path", "complete every course", "all courses required", "which course", "shortest course", "fastest course"])) {
+      include("course_recommendation");
+      include("onboarding_recommendation");
+    }
+
+    if (hasAny(["recommended onboarding", "role onboarding", "training checklist", "summarize my onboarding"])) {
+      include("onboarding_recommendation");
+    }
+
+    if (hasAny(["find policy", "policy lookup", "required policy", "policy for", "explain policy", "what does this policy mean"])) {
       include("policy_lookup");
+      include("knowledge_explain");
     }
+
     if (hasAny(["sharepoint document", "find document", "microsoft 365 document", "locate corporate document", "sharepoint library"])) {
       include("sharepoint_document_lookup");
     }
+
     if (hasAny(["summarize document", "document summary", "summarize sharepoint", "explain this corporate document"])) {
       include("knowledge_document_summary");
     }
-    if (hasAny(["learning progress", "training progress", "course progress", "completion status"])) {
-      include("learning_progress");
-    }
-    if (hasAny(["explain policy", "explain lesson", "what does this policy mean", "knowledge explain"])) {
+
+    if (hasAny(["explain lesson", "knowledge explain", "explain this lesson"])) {
       include("knowledge_explain");
     }
-    if (
-      hasAny([
-        "mandatory training overdue",
-        "completed security awareness",
-        "policy did this employee acknowledge",
-        "compliance gaps",
-        "compliance audit"
-      ])
-    ) {
+
+    if (hasAny(["mandatory training overdue", "completed security awareness", "did this employee acknowledge", "compliance audit"])) {
       include("compliance_audit");
-    }
-    if (hasAny(["requirement status", "training status", "what is overdue for this user"])) {
-      include("requirement_status");
     }
 
     if (selected.length === 0) {
@@ -136,26 +121,17 @@ export class DeterministicPlannerStrategy implements AgentPlannerStrategy {
   }
 
   private inferGoalType(text: string, workflows: WorkflowId[]): string {
-    if (workflows.includes("project_summary") && workflows.includes("forecast")) {
-      return "executive_readiness";
+    if (workflows.includes("next_training_step")) {
+      return "next_training_step";
     }
-    if (workflows.includes("delivery_advisor") && workflows.includes("forecast")) {
-      return "delivery_health";
+    if (workflows.includes("compliance_audit")) {
+      return "compliance_audit";
     }
-    if (workflows.includes("monthly_billing_summary") || workflows.includes("weekly_time_report")) {
-      return "billing_time_insight";
-    }
-    if (workflows.includes("change_assessment")) {
-      return "change_analysis";
-    }
-    if (workflows.includes("raid_extraction")) {
-      return "raid_analysis";
+    if (workflows.includes("requirement_status")) {
+      return "requirement_status";
     }
     if (workflows.includes("course_recommendation") || workflows.includes("onboarding_recommendation")) {
       return "learning_recommendation";
-    }
-    if (workflows.includes("next_training_step")) {
-      return "next_training_step";
     }
     if (
       workflows.includes("policy_lookup") ||
@@ -168,22 +144,32 @@ export class DeterministicPlannerStrategy implements AgentPlannerStrategy {
     if (workflows.includes("learning_progress")) {
       return "learning_progress";
     }
-    if (workflows.includes("compliance_audit")) {
-      return "compliance_audit";
+    if (workflows.includes("role_knowledge_lookup")) {
+      return "role_context";
     }
-    if (workflows.includes("requirement_status")) {
-      return "requirement_status";
-    }
-    if (text.includes("weekly")) {
-      return "weekly_reporting";
-    }
-    return "general_goal";
+    return text.includes("policy") ? "knowledge_lookup" : "onboarding_guidance";
   }
 
   private estimateConfidence(goalType: string, stepCount: number, warningCount: number): number {
-    const base = goalType === "general_goal" ? 0.68 : goalType === "weekly_reporting" ? 0.84 : 0.9;
+    const base = goalType === "onboarding_guidance" ? 0.74 : 0.9;
     const score = base - warningCount * 0.06 - Math.max(0, stepCount - 3) * 0.03;
     return Number(Math.max(0.4, Math.min(0.98, score)).toFixed(2));
+  }
+
+  private normalize(message: string): string {
+    return message
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/\bcourese\b/g, "course")
+      .replace(/\bcoureses\b/g, "courses")
+      .replace(/\bcource\b/g, "course")
+      .replace(/\bcources\b/g, "courses")
+      .replace(/\bcompliace\b/g, "compliance")
+      .replace(/\bcomplaince\b/g, "compliance")
+      .replace(/\btraning\b/g, "training")
+      .replace(/\bcomplere\b/g, "complete");
   }
 }
 

@@ -30,7 +30,7 @@ export function DashboardPage() {
       .catch((e) => setError(e instanceof Error ? e.message : "Failed to load"));
   }, []);
 
-  if (error) return <p style={{ color: "#b00020" }}>{error}</p>;
+  if (error) return <p className="admin-error">{error}</p>;
   if (!data) return <p>Loading dashboard...</p>;
 
   const cards = [
@@ -46,16 +46,16 @@ export function DashboardPage() {
   return (
     <section>
       <h2>Dashboard</h2>
-      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+      <div className="admin-card-grid">
         {cards.map(([label, value]) => (
-          <article key={String(label)} style={{ border: "1px solid #d8d8d8", borderRadius: 8, padding: 12 }}>
+          <article key={String(label)} className="admin-card">
             <p>{label}</p>
             <h3>{value}</h3>
           </article>
         ))}
       </div>
-      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "1fr 1fr", marginTop: 16 }}>
-        <article style={{ border: "1px solid #d8d8d8", borderRadius: 8, padding: 12 }}>
+      <div className="admin-two-column">
+        <article className="admin-card">
           <h3>Top Used Workflows</h3>
           {data.topUsedWorkflows.length === 0 ? <p>No workflow activity yet.</p> : null}
           {data.topUsedWorkflows.map((row) => (
@@ -64,7 +64,7 @@ export function DashboardPage() {
             </p>
           ))}
         </article>
-        <article style={{ border: "1px solid #d8d8d8", borderRadius: 8, padding: 12 }}>
+        <article className="admin-card">
           <h3>Recent Admin Actions</h3>
           {data.recentAdminActions.length === 0 ? <p>No admin actions yet.</p> : null}
           {data.recentAdminActions.map((row) => (
@@ -74,7 +74,7 @@ export function DashboardPage() {
           ))}
         </article>
       </div>
-      <article style={{ border: "1px solid #d8d8d8", borderRadius: 8, padding: 12, marginTop: 16 }}>
+      <article className="admin-card admin-card--spaced">
         <h3>Recent Workflow Activity</h3>
         {data.recentWorkflowActivity.length === 0 ? <p>No workflow activity yet.</p> : null}
         {data.recentWorkflowActivity.map((row, index) => (

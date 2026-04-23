@@ -52,24 +52,24 @@ export function CompliancePage({ adminRole }: CompliancePageProps) {
   return (
     <section>
       <h2>Compliance</h2>
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+      <div className="admin-inline-form">
         <input value={tenantId} onChange={(e) => setTenantId(e.target.value)} placeholder="Tenant ID" />
         <input value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="User ID" />
         <button type="button" onClick={() => void load()}>
           Refresh
         </button>
       </div>
-      {error ? <p style={{ color: "#b00020" }}>{error}</p> : null}
+      {error ? <p className="admin-error">{error}</p> : null}
       {summary ? (
-        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
-          <article style={{ border: "1px solid #d8d8d8", borderRadius: 8, padding: 12 }}>
+        <div className="admin-card-grid">
+          <article className="admin-card">
             <h3>Tenant Summary</h3>
             <p>Total: {summary.tenantSummary.total}</p>
             <p>Completed: {summary.tenantSummary.completed}</p>
             <p>In Progress: {summary.tenantSummary.inProgress}</p>
             <p>Overdue: {summary.tenantSummary.overdue}</p>
           </article>
-          <article style={{ border: "1px solid #d8d8d8", borderRadius: 8, padding: 12 }}>
+          <article className="admin-card">
             <h3>User Summary</h3>
             <p>User: {summary.userSummary.userId}</p>
             <p>Statuses: {summary.userSummary.statuses.length}</p>
@@ -80,7 +80,7 @@ export function CompliancePage({ adminRole }: CompliancePageProps) {
         <p>Loading compliance summary...</p>
       )}
 
-      <article style={{ border: "1px solid #d8d8d8", borderRadius: 8, padding: 12, marginTop: 16 }}>
+      <article className="admin-card admin-card--spaced">
         <h3>Acknowledgement Evidence</h3>
         {acknowledgements.length === 0 ? <p>No acknowledgement evidence found.</p> : null}
         {acknowledgements.map((entry) => (
@@ -90,7 +90,7 @@ export function CompliancePage({ adminRole }: CompliancePageProps) {
         ))}
       </article>
 
-      <article style={{ border: "1px solid #d8d8d8", borderRadius: 8, padding: 12, marginTop: 16 }}>
+      <article className="admin-card admin-card--spaced">
         <h3>HR Overrides</h3>
         {overrides.length === 0 ? <p>No HR overrides recorded.</p> : null}
         {overrides.map((entry) => (
@@ -99,12 +99,11 @@ export function CompliancePage({ adminRole }: CompliancePageProps) {
           </p>
         ))}
         {adminRole !== "readonlyadmin" ? (
-          <div style={{ marginTop: 12 }}>
+          <div className="admin-stack admin-stack--spaced">
             <textarea
               value={overrideReason}
               onChange={(e) => setOverrideReason(e.target.value)}
               rows={3}
-              style={{ width: "100%" }}
             />
             <button
               type="button"

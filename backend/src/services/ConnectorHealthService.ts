@@ -5,17 +5,17 @@ export class ConnectorHealthService {
   private healthRows: ConnectorHealth[] = [
     {
       tenantId: "tenant-acme",
-      connectorName: "clickup",
+      connectorName: "sharepoint",
       status: "healthy",
       lastSyncTime: new Date().toISOString(),
       lastSuccessfulResponseTime: 420
     },
     {
       tenantId: "tenant-beta",
-      connectorName: "zoho",
+      connectorName: "microsoft-graph",
       status: "failed",
       lastSyncTime: new Date(Date.now() - 3600_000).toISOString(),
-      lastError: "401 invalid refresh token"
+      lastError: "Consent required"
     }
   ];
 

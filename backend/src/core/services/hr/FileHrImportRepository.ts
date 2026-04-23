@@ -135,6 +135,19 @@ export class FileHrImportRepository {
     );
   }
 
+  findUserByUsername(tenantId: string, username: string): ProvisionedUser | null {
+    const normalized = username.toLowerCase();
+    return (
+      this.read().users.find(
+        (user) =>
+          user.tenantId === tenantId &&
+          (user.username.toLowerCase() === normalized ||
+            user.employeeCode.toLowerCase() === normalized ||
+            user.workEmail?.toLowerCase() === normalized)
+      ) ?? null
+    );
+  }
+
   createUser(user: ProvisionedUser): ProvisionedUser {
     const state = this.read();
     state.users.push(user);
@@ -219,3 +232,4 @@ export class FileHrImportRepository {
     return this.read().auditEvents.filter((event) => event.tenantId === tenantId);
   }
 }
+

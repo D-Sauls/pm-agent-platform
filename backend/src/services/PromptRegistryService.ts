@@ -4,16 +4,16 @@ import type { PromptVersion, TenantPromptAssignment } from "../models/PromptVers
 export class PromptRegistryService {
   private versions: PromptVersion[] = [
     {
-      promptKey: "weekly_report",
+      promptKey: "onboarding_assistant",
       version: "v1",
-      text: "Generate weekly report with project summary, risks, dependencies, and decisions.",
+      text: "Guide employees through assigned onboarding, learning, policy, and compliance tasks.",
       createdAt: new Date().toISOString(),
       isDefault: true
     },
     {
-      promptKey: "weekly_report",
+      promptKey: "onboarding_assistant",
       version: "v2",
-      text: "Generate executive weekly report with explicit RAG rationale and action owner mapping.",
+      text: "Answer onboarding and compliance questions with explicit source context and safe next actions.",
       createdAt: new Date().toISOString(),
       isDefault: false
     }

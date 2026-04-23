@@ -34,7 +34,7 @@ export function EnhancementRequestsPage() {
   return (
     <section>
       <h2>Enhancement Requests Inbox</h2>
-      <div style={{ display: "flex", gap: 8 }}>
+      <div className="admin-inline-form">
         <input
           value={tenantFilter}
           onChange={(e) => setTenantFilter(e.target.value)}
@@ -47,45 +47,47 @@ export function EnhancementRequestsPage() {
         />
       </div>
       {rows.length === 0 ? <p>No requests found.</p> : null}
-      {rows.map((row) => (
-        <article key={row.id} style={{ border: "1px solid #d8d8d8", borderRadius: 8, padding: 12, marginTop: 8 }}>
-          <p>
-            <strong>{row.title}</strong> ({row.status}) - {row.tenantId}
-          </p>
-          <p>Submitted by: {row.submittedBy}</p>
-          <p>Urgency: {row.urgency}</p>
-          <p>Expected benefit: {row.expectedBenefit}</p>
-          <p>Current workaround: {row.currentWorkaround}</p>
-          <p>Created: {row.createdDate}</p>
-          <p>Internal notes: {row.internalNotes || "none"}</p>
-          <button
-            onClick={async () => {
-              await patchAdminJson(`/enhancements/${row.id}/status`, { status: "reviewing" });
-              await load();
-            }}
-          >
-            Mark Reviewing
-          </button>{" "}
-          <button
-            onClick={async () => {
-              await patchAdminJson(`/enhancements/${row.id}/status`, { status: "backlog" });
-              await load();
-            }}
-          >
-            Move to Backlog
-          </button>{" "}
-          <button
-            onClick={async () => {
-              await patchAdminJson(`/enhancements/${row.id}/notes`, {
-                internalNotes: "Reviewed by support team"
-              });
-              await load();
-            }}
-          >
-            Add Internal Note
-          </button>
-        </article>
-      ))}
+      <div className="admin-stack">
+        {rows.map((row) => (
+          <article key={row.id} className="admin-card">
+            <p>
+              <strong>{row.title}</strong> ({row.status}) - {row.tenantId}
+            </p>
+            <p>Submitted by: {row.submittedBy}</p>
+            <p>Urgency: {row.urgency}</p>
+            <p>Expected benefit: {row.expectedBenefit}</p>
+            <p>Current workaround: {row.currentWorkaround}</p>
+            <p>Created: {row.createdDate}</p>
+            <p>Internal notes: {row.internalNotes || "none"}</p>
+            <button
+              onClick={async () => {
+                await patchAdminJson(`/enhancements/${row.id}/status`, { status: "reviewing" });
+                await load();
+              }}
+            >
+              Mark Reviewing
+            </button>{" "}
+            <button
+              onClick={async () => {
+                await patchAdminJson(`/enhancements/${row.id}/status`, { status: "backlog" });
+                await load();
+              }}
+            >
+              Move to Backlog
+            </button>{" "}
+            <button
+              onClick={async () => {
+                await patchAdminJson(`/enhancements/${row.id}/notes`, {
+                  internalNotes: "Reviewed by support team"
+                });
+                await load();
+              }}
+            >
+              Add Internal Note
+            </button>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }

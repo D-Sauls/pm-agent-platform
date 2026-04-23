@@ -5,23 +5,21 @@ import { AdaptiveCardRenderer } from "../src/integrations/teams/AdaptiveCardRend
 test("AdaptiveCardRenderer renders adaptive card with metrics and recommendations", () => {
   const renderer = new AdaptiveCardRenderer();
   const card = renderer.render({
-    workflowId: "weekly_time_report",
-    confidenceScore: 0.9,
-    connectorUsed: "clickup",
-    result: {
-      workflowId: "weekly_time_report",
-      resultType: "weekly_time_report",
-      generatedAt: new Date(),
-      confidenceScore: 0.9,
+    planId: "plan-1",
+    goalType: "next_training_step",
+    plannerConfidence: 0.9,
+    stopReason: "completed",
+    stepExecutions: [],
+    response: {
+      goalSummary: "What should I do next?",
+      workflowsExecuted: ["next_training_step"],
+      synthesizedSummary: "Complete the next assigned lesson.",
+      keyFindings: ["Lesson 3 is next"],
+      recommendedActions: ["Open Lesson 3"],
+      assumptionsMade: [],
       warnings: [],
-      data: {
-        totalHours: 10,
-        billableHours: 8,
-        nonBillableHours: 2,
-        billableRatio: 0.8,
-        recommendations: ["Review unknown effort entries"]
-      }
-    } as any
+      generatedAt: new Date()
+    }
   });
 
   assert.equal(card.type, "AdaptiveCard");

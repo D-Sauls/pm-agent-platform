@@ -272,8 +272,6 @@ export const agenticOrchestratorServiceV2 = new AgenticOrchestratorService(
   agentPlannerServiceV2,
   workflowRegistry,
   tenantContextServiceV2,
-  projectContextServiceV2,
-  projectRepository,
   resultSynthesisServiceV2
 );
 
@@ -287,9 +285,9 @@ void (async () => {
       planType: "enterprise",
       createdDate: new Date(),
       updatedDate: new Date(),
-      defaultPromptVersion: "weekly_report:v1",
-      enabledConnectors: ["clickup", "monday", "planner", "sharepoint"],
-      featureFlags: ["weeklyReportV2"],
+      defaultPromptVersion: "onboarding_assistant:v1",
+      enabledConnectors: ["microsoft-graph", "sharepoint", "teams"],
+      featureFlags: ["assistantPromptV2", "hrImportPreview"],
       metadata: { region: "us" }
     },
     {
@@ -300,8 +298,8 @@ void (async () => {
       planType: "starter",
       createdDate: new Date(),
       updatedDate: new Date(),
-      defaultPromptVersion: "weekly_report:v1",
-      enabledConnectors: ["zoho"],
+      defaultPromptVersion: "onboarding_assistant:v1",
+      enabledConnectors: ["microsoft-graph", "sharepoint"],
       featureFlags: [],
       metadata: { region: "eu" }
     }

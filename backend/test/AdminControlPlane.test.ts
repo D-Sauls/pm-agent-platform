@@ -145,13 +145,13 @@ test("feature flag tenant override updates", async () => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        flagKey: "weeklyReportV2",
+        flagKey: "assistantPromptV2",
         enabled: false
       })
     });
     assert.equal(update.status, 200);
     const body = (await update.json()) as any;
-    assert.equal(body.flags.weeklyReportV2, false);
+    assert.equal(body.flags.assistantPromptV2, false);
   } finally {
     server.close();
   }

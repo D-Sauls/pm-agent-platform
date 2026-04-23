@@ -2,6 +2,8 @@ export type LicenseStatus = "active" | "inactive" | "suspended";
 export type PlanType = "starter" | "professional" | "enterprise";
 export type ConnectorProvider =
   | "microsoft-graph"
+  | "sharepoint"
+  | "teams"
   | "microsoft-project"
   | "microsoft-planner"
   | "planner"

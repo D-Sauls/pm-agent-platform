@@ -5,9 +5,7 @@ import type {
   StepExecutionRecord
 } from "../../models/agenticModels.js";
 import type { NormalizedProjectContext } from "../../models/projectModels.js";
-import type { ProjectRepository } from "../../repositories/interfaces.js";
 import { agenticTelemetryService, loggingService } from "../../../observability/runtime.js";
-import { ProjectContextService } from "../ProjectContextService.js";
 import { TenantContextService } from "../TenantContextService.js";
 import type { WorkflowResult } from "../workflows/baseWorkflow.js";
 import { WorkflowRegistry } from "../workflows/workflowRegistry.js";
@@ -19,8 +17,6 @@ export class AgenticOrchestratorService {
     private readonly plannerService: AgentPlannerService,
     private readonly workflowRegistry: WorkflowRegistry,
     private readonly tenantContextService: TenantContextService,
-    private readonly projectContextService: ProjectContextService,
-    private readonly projectRepository: ProjectRepository,
     private readonly synthesisService: ResultSynthesisService
   ) {}
 
@@ -32,11 +28,7 @@ export class AgenticOrchestratorService {
     }
 
     const tenantContext = await this.tenantContextService.resolve(request.tenantId);
-    const projectContext = await this.resolveProjectContext(
-      request.tenantId,
-      request.projectId,
-      tenantContext
-    );
+    const projectContext = await this.resolveOnboardingContext(request.tenantId, tenantContext);
 
     const workflowResults: WorkflowResult[] = [];
     const stepExecutions: StepExecutionRecord[] = [];
@@ -137,9 +129,8 @@ export class AgenticOrchestratorService {
     };
   }
 
-  private async resolveProjectContext(
+  private async resolveOnboardingContext(
     tenantId: string,
-    projectId: string | undefined,
     tenantContext: Awaited<ReturnType<TenantContextService["resolve"]>>
   ): Promise<NormalizedProjectContext> {
     return {
@@ -147,7 +138,7 @@ export class AgenticOrchestratorService {
         projectId: "onboarding-learning-compliance-context",
         tenantId,
         sourceSystem: "internal",
-        name: "Onboarding Learning Compliance Context",
+        name: `${tenantContext.tenant.organizationName} Onboarding Context`,
         deliveryMode: "hybrid",
         status: "Active"
       },

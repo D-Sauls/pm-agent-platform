@@ -25,8 +25,8 @@ test("TenantProvisioningService provisions tenant, license, prompts, and connect
     tenantId: "tenant-contoso",
     organizationName: "Contoso Ltd",
     planType: "professional",
-    enabledConnectors: ["clickup", "monday"],
-    primaryConnector: "clickup",
+    enabledConnectors: ["microsoft-graph", "sharepoint"],
+    primaryConnector: "sharepoint",
     trialMode: true
   });
 
@@ -34,10 +34,10 @@ test("TenantProvisioningService provisions tenant, license, prompts, and connect
   assert.equal(result.license.status, "trial");
   assert.ok(result.license.licenseKey);
   assert.equal(result.featureFlags.tenantId, "tenant-contoso");
-  assert.equal(result.promptAssignments[0]?.promptKey, "weekly_report");
+  assert.equal(result.promptAssignments[0]?.promptKey, "onboarding_assistant");
   assert.deepEqual(
     result.connectorHealth.map((entry) => entry.connectorName).sort(),
-    ["clickup", "monday"]
+    ["microsoft-graph", "sharepoint"]
   );
 });
 

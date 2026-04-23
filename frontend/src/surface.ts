@@ -1,10 +1,11 @@
 export type AppSurface = "admin" | "teams" | "pwa";
 
 export function resolveAppSurface(pathname: string): AppSurface {
-  if (pathname.startsWith("/admin")) {
+  const normalized = pathname || "/";
+  if (normalized === "/admin" || normalized.startsWith("/admin/")) {
     return "admin";
   }
-  if (pathname.startsWith("/teams")) {
+  if (normalized === "/teams" || normalized.startsWith("/teams/")) {
     return "teams";
   }
   return "pwa";

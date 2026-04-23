@@ -23,53 +23,51 @@ function workflow(id: BaseWorkflow["id"]): BaseWorkflow {
   };
 }
 
-test("AgentPlannerService selects single workflow for change request intent", () => {
+test("AgentPlannerService selects next training workflow for onboarding intent", () => {
   const registry = new WorkflowRegistry();
-  registry.register(workflow("change_assessment"));
-  registry.register(workflow("project_summary"));
+  registry.register(workflow("next_training_step"));
+  registry.register(workflow("onboarding_recommendation"));
   const planner = new AgentPlannerService(registry);
 
   const plan = planner.createPlan({
     tenantId: "tenant-test",
-    projectId: "project-test",
-    message: "Assess this change request for scope impact"
+    message: "What should I do next in onboarding?"
   });
 
   assert.equal(plan.steps.length, 1);
-  assert.equal(plan.steps[0].workflowId, "change_assessment");
+  assert.equal(plan.steps[0].workflowId, "next_training_step");
 });
 
-test("AgentPlannerService selects multi-workflow plan for executive summary with forecast and risks", () => {
+test("AgentPlannerService selects compliance workflows for missing compliance intent", () => {
   const registry = new WorkflowRegistry();
-  registry.register(workflow("project_summary"));
-  registry.register(workflow("forecast"));
-  registry.register(workflow("delivery_advisor"));
+  registry.register(workflow("compliance_audit"));
+  registry.register(workflow("requirement_status"));
   const planner = new AgentPlannerService(registry);
 
   const plan = planner.createPlan({
     tenantId: "tenant-test",
-    projectId: "project-test",
-    message: "Give me an executive summary with forecast and risks"
+    message: "What am I missing for compliance?"
   });
 
-  assert.ok(plan.steps.length >= 2);
-  assert.equal(plan.steps[0].workflowId, "project_summary");
-  assert.ok(plan.steps.some((step) => step.workflowId === "forecast"));
+  assert.equal(plan.steps.length, 2);
+  assert.equal(plan.steps[0].workflowId, "compliance_audit");
+  assert.equal(plan.steps[1].workflowId, "requirement_status");
 });
 
 test("AgentPlannerService enforces bounded max step count", () => {
   const registry = new WorkflowRegistry();
-  registry.register(workflow("project_summary"));
-  registry.register(workflow("forecast"));
-  registry.register(workflow("delivery_advisor"));
-  registry.register(workflow("monthly_billing_summary"));
-  registry.register(workflow("weekly_time_report"));
+  registry.register(workflow("next_training_step"));
+  registry.register(workflow("onboarding_recommendation"));
+  registry.register(workflow("course_recommendation"));
+  registry.register(workflow("policy_lookup"));
+  registry.register(workflow("knowledge_explain"));
+  registry.register(workflow("compliance_audit"));
+  registry.register(workflow("requirement_status"));
   const planner = new AgentPlannerService(registry);
 
   const plan = planner.createPlan({
     tenantId: "tenant-test",
-    projectId: "project-test",
-    message: "Executive summary with forecast, blockers, billable trend and utilization this month"
+    message: "What should I do next, what courses are required, explain policy, and what am I missing for compliance?"
   });
 
   assert.ok(plan.steps.length <= plan.maxSteps);

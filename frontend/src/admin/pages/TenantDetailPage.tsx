@@ -54,9 +54,9 @@ export function TenantDetailPage({ tenantId, onTenantIdChange }: TenantDetailPag
     <section>
       <h2>Tenant Detail</h2>
       <input value={tenantId} onChange={(e) => onTenantIdChange(e.target.value)} />
-      {error ? <p style={{ color: "#b00020" }}>{error}</p> : null}
+      {error ? <p className="admin-error">{error}</p> : null}
       {data ? (
-        <article style={{ border: "1px solid #d8d8d8", borderRadius: 8, padding: 12, marginTop: 8 }}>
+        <article className="admin-card admin-card--spaced">
           <p>
             <strong>Organization:</strong> {data.tenant.organizationName}
           </p>

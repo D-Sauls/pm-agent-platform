@@ -14,13 +14,20 @@ export class ResultSynthesisService {
 
     for (const result of workflowResults) {
       const data = result.data as Record<string, unknown>;
-      findings.push(...this.pickStrings(data, ["projectOverview", "progressSummary", "statusSummary"]));
-      findings.push(...this.pickArray(data, ["risksIssues", "risks", "blockers", "dependencies"]));
+      findings.push(
+        ...this.pickStrings(data, [
+          "summary",
+          "recommendation",
+          "explanation",
+          "overallStatus",
+          "status"
+        ])
+      );
+      findings.push(...this.pickArray(data, ["keyPoints", "nextActions"]));
       actions.push(
         ...this.pickArray(data, [
+          "nextActions",
           "recommendedActions",
-          "recommendedFocus",
-          "decisionsRequired",
           "recommendations"
         ])
       );

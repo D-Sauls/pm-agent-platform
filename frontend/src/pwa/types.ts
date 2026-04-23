@@ -1,10 +1,11 @@
 export interface EmployeeSession {
   userId: string;
   tenantId: string;
+  username: string;
   displayName: string;
   role: string;
   department?: string;
-  sessionToken?: string;
+  sessionToken: string;
 }
 
 export interface TenantBranding {
@@ -50,10 +51,12 @@ export interface EmployeePolicy {
 
 export interface DownloadRecord {
   id: string;
+  kind: "course" | "policy";
   title: string;
   urls: string[];
   downloadedAt: string;
   status: "ready" | "blocked" | "pending_sync";
+  versionKey?: string;
   reason?: string;
 }
 
@@ -88,17 +91,34 @@ export interface EmployeeOnboardingProgress {
   } | null;
 }
 
-export type EmployeePage =
-  | "login"
-  | "dashboard"
-  | "assigned"
-  | "catalog"
-  | "course"
-  | "lesson"
-  | "policies"
-  | "policy"
-  | "progress"
-  | "compliance"
-  | "assistant"
-  | "downloads"
-  | "profile";
+export interface CourseProgressSummary {
+  userId: string;
+  courseId: string;
+  progressPercent: number;
+  completedLessons: number;
+  totalLessons: number;
+  status: string;
+}
+
+export interface ComplianceStatusItem {
+  requirementId: string;
+  status: string;
+  dueDate?: string | null;
+}
+
+export interface AcknowledgementSummary {
+  id: string;
+  subjectId: string;
+  subjectVersionId?: string | null;
+  recordedAt: string;
+  acknowledgementType: string;
+}
+
+export interface PolicyVersionSummary {
+  id: string;
+  versionLabel: string;
+  effectiveDate?: string | null;
+  changeSummary?: string | null;
+}
+
+export type EmployeeTab = "home" | "training" | "policies" | "help";

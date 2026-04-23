@@ -1,4 +1,3 @@
-import type { AgentExecutionResponse } from "../../core/services/workflows/agentOrchestrator.js";
 import type { AgenticExecutionResponse } from "../../core/models/agenticModels.js";
 
 interface AdaptiveCard {
@@ -8,7 +7,7 @@ interface AdaptiveCard {
 }
 
 export class AdaptiveCardRenderer {
-  render(execution: AgentExecutionResponse | AgenticExecutionResponse): AdaptiveCard {
+  render(execution: AgenticExecutionResponse): AdaptiveCard {
     const now = new Date().toISOString();
     const normalized = this.normalize(execution);
     const data = normalized.data as Record<string, any>;
@@ -47,7 +46,7 @@ export class AdaptiveCardRenderer {
         {
           type: "TextBlock",
           text: (Array.isArray(recommendations) && recommendations.length > 0
-            ? recommendations.slice(0, 5).join("\n- ")
+            ? `- ${recommendations.slice(0, 5).join("\n- ")}`
             : "No recommendations returned."),
           wrap: true
         }
@@ -55,16 +54,10 @@ export class AdaptiveCardRenderer {
     };
   }
 
-  private normalize(execution: AgentExecutionResponse | AgenticExecutionResponse): {
+  private normalize(execution: AgenticExecutionResponse): {
     workflowId: string;
     data: Record<string, unknown>;
   } {
-    if ("result" in execution) {
-      return {
-        workflowId: execution.workflowId,
-        data: execution.result.data as Record<string, unknown>
-      };
-    }
     return {
       workflowId: "agentic_goal",
       data: {
@@ -79,29 +72,30 @@ export class AdaptiveCardRenderer {
 
   private titleFor(workflowId: string): string {
     const titles: Record<string, string> = {
-      weekly_report: "Weekly Report",
-      raid_extraction: "RAID Extraction",
-      change_assessment: "Change Assessment",
-      delivery_advisor: "Delivery Advisor",
-      project_summary: "Project Summary",
-      forecast: "Forecast",
-      weekly_time_report: "Weekly Time Report",
-      monthly_billing_summary: "Monthly Billing Summary"
-      ,
-      agentic_goal: "Agentic Goal Response"
+      course_recommendation: "Course Recommendation",
+      onboarding_recommendation: "Onboarding Recommendation",
+      next_training_step: "Next Training Step",
+      role_knowledge_lookup: "Role Knowledge",
+      policy_lookup: "Policy Lookup",
+      learning_progress: "Learning Progress",
+      knowledge_explain: "Knowledge Explanation",
+      sharepoint_document_lookup: "SharePoint Knowledge Lookup",
+      knowledge_document_summary: "Knowledge Summary",
+      compliance_audit: "Compliance Audit",
+      requirement_status: "Requirement Status",
+      agentic_goal: "Learning Assistant Response"
     };
-    return titles[workflowId] ?? "PM Agent Result";
+    return titles[workflowId] ?? "Learning Assistant Result";
   }
 
   private extractMetrics(data: Record<string, any>): Array<{ title: string; value: string }> {
     const facts: Array<{ title: string; value: string }> = [];
     const numericKeys = [
-      "totalHours",
-      "billableHours",
-      "nonBillableHours",
-      "billableRatio",
-      "overallRagStatus",
-      "deliveryHealth"
+      "overallStatus",
+      "progressPercent",
+      "completedLessons",
+      "totalLessons",
+      "completionPercentage"
     ];
     for (const key of numericKeys) {
       if (data[key] !== undefined && data[key] !== null) {

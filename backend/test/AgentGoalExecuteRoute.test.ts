@@ -1,6 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createApp } from "../src/app.js";
+import { employeeSessionService } from "../src/core/services/auth/EmployeeSessionService.js";
+
+function sessionToken(): string {
+  return employeeSessionService.issueSession({
+    userId: "assistant-test-user",
+    tenantId: "tenant-acme",
+    role: "employee",
+    employeeCode: "A-100",
+    department: "Finance",
+    roleName: "Finance Analyst"
+  });
+}
 
 test("POST /api/agent/goal-execute returns bounded agentic response", async () => {
   const app = createApp();
@@ -16,13 +28,12 @@ test("POST /api/agent/goal-execute returns bounded agentic response", async () =
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: "Bearer test-user|tenant-acme",
+        Authorization: `Bearer ${sessionToken()}`,
         "x-tenant-id": "tenant-acme"
       },
       body: JSON.stringify({
         tenantId: "tenant-acme",
-        projectId: "project-alpha",
-        message: "Give me an executive summary with forecast and risks"
+        message: "What should I do next for onboarding and compliance?"
       })
     });
     assert.equal(response.status, 200);
@@ -32,6 +43,9 @@ test("POST /api/agent/goal-execute returns bounded agentic response", async () =
     assert.ok(Array.isArray(body.response.workflowsExecuted));
     assert.ok(typeof body.response.synthesizedSummary === "string");
     assert.ok(body.stepExecutions.length <= 4);
+    assert.equal(body.stopReason, "completed");
+    assert.ok(body.stepExecutions.every((step: any) => step.success));
+    assert.ok(body.response.workflowsExecuted.includes("next_training_step"));
   } finally {
     server.close();
   }
@@ -52,12 +66,11 @@ test("POST /api/agent/goal-execute returns structured error for unsupported ambi
       headers: {
         "Content-Type": "application/json",
         "x-request-id": "goal-fail-1",
-        Authorization: "Bearer test-user|tenant-acme",
+        Authorization: `Bearer ${sessionToken()}`,
         "x-tenant-id": "tenant-acme"
       },
       body: JSON.stringify({
         tenantId: "tenant-acme",
-        projectId: "project-alpha",
         message: "?"
       })
     });
