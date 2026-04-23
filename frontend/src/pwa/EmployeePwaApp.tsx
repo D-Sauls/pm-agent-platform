@@ -1,4 +1,4 @@
-import { type CSSProperties, type FormEvent, useEffect, useState } from "react";
+import { type CSSProperties, type FormEvent, useEffect, useMemo, useState } from "react";
 import {
   AuthScreen,
   Banner,
@@ -10,9 +10,11 @@ import {
   ThemeToggle,
   TrainingListView
 } from "./EmployeePwaViews";
-import { useEmployeeWorkspace } from "./useEmployeeWorkspace";
 import { type ThemeMode, useThemeMode } from "./theme";
 import type { EmployeeCourse, EmployeePolicy, EmployeeTab } from "./types";
+import { useEmployeeActions } from "./useEmployeeActions";
+import { useEmployeeAuth } from "./useEmployeeAuth";
+import { useEmployeeWorkspaceData } from "./useEmployeeWorkspaceData";
 
 const NAV_ITEMS: Array<{ key: EmployeeTab; label: string }> = [
   { key: "home", label: "Home" },
@@ -22,7 +24,26 @@ const NAV_ITEMS: Array<{ key: EmployeeTab; label: string }> = [
 ];
 
 export function EmployeePwaApp() {
-  const workspace = useEmployeeWorkspace();
+  const auth = useEmployeeAuth();
+  const data = useEmployeeWorkspaceData({ session: auth.session, runtime: auth.runtime });
+  const actions = useEmployeeActions({
+    session: auth.session,
+    runtime: auth.runtime,
+    storageScope: data.storageScope,
+    online: data.online,
+    selectedCourse: data.selectedCourse,
+    selectedPolicy: data.selectedPolicy,
+    lesson: data.lesson,
+    progress: data.progress,
+    onboardingRecommendation: data.onboardingRecommendation,
+    onboardingProgress: data.onboardingProgress,
+    refreshWorkspace: data.refresh,
+    setProgress: data.setProgress,
+    setAcknowledgements: data.setAcknowledgements,
+    setCompliance: data.setCompliance,
+    setOnboardingProgress: data.setOnboardingProgress,
+    setQueuedChangesCount: data.setQueuedChangesCount
+  });
   const { themeMode, setThemeMode } = useThemeMode();
   const [tab, setTab] = useState<EmployeeTab>("home");
   const [trainingDetailOpen, setTrainingDetailOpen] = useState(false);
@@ -30,25 +51,37 @@ export function EmployeePwaApp() {
   const [policyConfirmed, setPolicyConfirmed] = useState(false);
   const [assistantInput, setAssistantInput] = useState("");
 
+  const workspaceError = useMemo(() => {
+    if (!auth.session) {
+      return auth.error ? { message: auth.error } : null;
+    }
+    return data.error ?? actions.error;
+  }, [actions.error, auth.error, auth.session, data.error]);
+  const workspaceLoading = data.loading || actions.loading;
+
   useEffect(() => {
     setPolicyConfirmed(false);
-  }, [workspace.selectedPolicy?.id]);
+  }, [data.selectedPolicy?.id]);
 
-  if (!workspace.session) {
+  if (!auth.session) {
     return (
       <AuthScreen
-        appName={workspace.branding.appName}
-        logoText={workspace.branding.logoText}
-        welcomeMessage={workspace.branding.welcomeMessage}
-        authMode={workspace.authMode}
-        onChangeAuthMode={workspace.setAuthMode}
-        activationToken={workspace.activationToken}
-        onActivationTokenChange={workspace.setActivationToken}
-        onActivate={workspace.activateAccount}
-        onLogin={workspace.signIn}
-        passwordResetUrl={workspace.runtime.passwordResetUrl}
-        loading={workspace.authLoading}
-        error={workspace.error?.message}
+        appName={data.branding.appName}
+        logoText={data.branding.logoText}
+        welcomeMessage={data.branding.welcomeMessage}
+        authMode={auth.authMode}
+        onChangeAuthMode={auth.setAuthMode}
+        activationToken={auth.activationToken}
+        onActivationTokenChange={auth.setActivationToken}
+        onActivate={async (input) => {
+          await auth.activateAccount(input);
+        }}
+        onLogin={async (input) => {
+          await auth.signIn(input);
+        }}
+        passwordResetUrl={auth.runtime.passwordResetUrl}
+        loading={auth.loading}
+        error={workspaceError?.message}
         themeMode={themeMode}
         onThemeModeChange={setThemeMode}
       />
@@ -56,133 +89,141 @@ export function EmployeePwaApp() {
   }
 
   const brandStyle = {
-    "--brand-primary": workspace.branding.primaryColor,
-    "--brand-accent": workspace.branding.accentColor
+    "--brand-primary": data.branding.primaryColor,
+    "--brand-accent": data.branding.accentColor
   } as CSSProperties;
 
   function openPrimaryTask() {
-    if (workspace.assignedCourses[0]) {
+    if (data.assignedCourses[0]) {
       setTab("training");
       setTrainingDetailOpen(true);
-      void workspace.openCourse(workspace.assignedCourses[0].id);
+      void data.openCourse(data.assignedCourses[0].id);
       return;
     }
-    if (workspace.assignedPolicies[0]) {
+    if (data.assignedPolicies[0]) {
       setTab("policies");
       setPolicyDetailOpen(true);
-      void workspace.openPolicy(workspace.assignedPolicies[0].id);
+      void data.openPolicy(data.assignedPolicies[0].id);
     }
   }
 
   function handleOpenCourse(course: EmployeeCourse) {
     setTab("training");
     setTrainingDetailOpen(true);
-    void workspace.openCourse(course.id);
+    void data.openCourse(course.id);
   }
 
   function handleOpenPolicy(policy: EmployeePolicy) {
     setTab("policies");
     setPolicyDetailOpen(true);
-    void workspace.openPolicy(policy.id);
+    void data.openPolicy(policy.id);
   }
 
   async function handlePolicyAcknowledge() {
-    if (!workspace.selectedPolicy || !policyConfirmed) {
+    if (!data.selectedPolicy || !policyConfirmed) {
       return;
     }
-    await workspace.acknowledgePolicy(workspace.selectedPolicy.id);
+    await actions.acknowledgePolicy(data.selectedPolicy.id);
     setPolicyConfirmed(false);
   }
 
   async function handleAssistantSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await workspace.submitAssistantPrompt(assistantInput);
+    await actions.submitAssistantPrompt(assistantInput);
+  }
+
+  async function handleSignOut() {
+    await actions.clearSessionArtifacts(data.downloads);
+    data.resetWorkspace();
+    auth.signOut();
+    actions.clearError();
+    data.clearError();
   }
 
   return (
     <main className="employee-mobile-app" style={brandStyle}>
       <header className="employee-header">
         <div className="employee-header__brand">
-          <div className="brand-mark">{workspace.branding.logoText}</div>
+          <div className="brand-mark">{data.branding.logoText}</div>
           <div>
             <p className="eyebrow">Assigned onboarding</p>
-            <h1>{workspace.branding.appName}</h1>
+            <h1>{data.branding.appName}</h1>
           </div>
         </div>
         <div className="employee-header__actions">
           <ThemeToggle value={themeMode} onChange={setThemeMode} />
-          <button type="button" className="ghost-button" onClick={() => void workspace.signOut()}>
+          <button type="button" className="ghost-button" onClick={() => void handleSignOut()}>
             Sign out
           </button>
         </div>
       </header>
 
-      {!workspace.online ? (
+      {!data.online ? (
         <Banner tone="warning" title="Offline mode">
-          Downloaded courses stay available. {workspace.queuedChangesCount > 0 ? `${workspace.queuedChangesCount} progress update${workspace.queuedChangesCount === 1 ? "" : "s"} will sync automatically.` : "New progress will queue until you reconnect."}
+          Downloaded courses stay available. {data.queuedChangesCount > 0 ? `${data.queuedChangesCount} progress update${data.queuedChangesCount === 1 ? "" : "s"} will sync automatically.` : "New progress will queue until you reconnect."}
         </Banner>
       ) : null}
 
-      {workspace.error ? (
+      {workspaceError ? (
         <Banner tone="error" title="Something needs attention">
-          <span>{workspace.error.message}</span>
-          {workspace.error.retryLabel ? (
-            <button type="button" className="ghost-button" onClick={() => void workspace.retry()}>
-              {workspace.error.retryLabel}
+          <span>{workspaceError.message}</span>
+          {workspaceError.retryLabel ? (
+            <button type="button" className="ghost-button" onClick={() => void data.refresh()}>
+              {workspaceError.retryLabel}
             </button>
           ) : null}
         </Banner>
       ) : null}
 
-      {workspace.loading ? <Banner tone="info" title="Refreshing your assigned workspace" /> : null}
+      {workspaceLoading ? <Banner tone="info" title="Refreshing your assigned workspace" /> : null}
 
       <section className="employee-content">
         {tab === "home" ? (
           <HomeTabView
-            completionPercent={workspace.completionPercent}
-            nextStepTitle={workspace.nextStepTitle}
-            nextStepDescription={workspace.nextStepDescription}
-            pendingItems={workspace.pendingItems}
-            overdueCount={workspace.overdueCount}
-            readyDownloads={workspace.readyDownloads}
-            pendingDownloads={workspace.pendingDownloads}
+            completionPercent={data.completionPercent}
+            nextStepTitle={data.nextStepTitle}
+            nextStepDescription={data.nextStepDescription}
+            pendingItems={data.pendingItems}
+            overdueCount={data.overdueCount}
+            readyDownloads={data.readyDownloads}
+            pendingDownloads={data.pendingDownloads}
             onContinue={openPrimaryTask}
           />
         ) : null}
 
         {tab === "training" ? (
-          trainingDetailOpen && workspace.selectedCourse ? (
+          trainingDetailOpen && data.selectedCourse ? (
             <CourseDetailView
-              course={workspace.selectedCourse}
-              lesson={workspace.lesson}
-              progressPercent={workspace.progress[workspace.selectedCourse.id]?.progressPercent ?? 0}
-              status={workspace.resolveCourseStatus(workspace.selectedCourse)}
-              offline={!workspace.online}
+              course={data.selectedCourse}
+              lesson={data.lesson}
+              progressPercent={data.progress[data.selectedCourse.id]?.progressPercent ?? 0}
+              status={data.resolveCourseStatus(data.selectedCourse)}
+              offline={!data.online}
               onBack={() => {
                 setTrainingDetailOpen(false);
-                workspace.setLesson(null);
+                data.setLesson(null);
               }}
-              onOpenLesson={(lessonId) => void workspace.openLesson(workspace.selectedCourse!.id, lessonId)}
-              onCompleteLesson={() => void workspace.completeLesson()}
+              onOpenLesson={(lessonId) => void data.openLesson(data.selectedCourse!.id, lessonId)}
+              onCompleteLesson={() => void actions.completeLesson()}
             />
           ) : (
             <TrainingListView
-              courses={workspace.assignedCourses}
-              progress={workspace.progress}
-              resolveStatus={workspace.resolveCourseStatus}
+              courses={data.assignedCourses}
+              progress={data.progress}
+              resolveStatus={data.resolveCourseStatus}
               onOpenCourse={handleOpenCourse}
             />
           )
         ) : null}
 
         {tab === "policies" ? (
-          policyDetailOpen && workspace.selectedPolicy ? (
+          policyDetailOpen && data.selectedPolicy ? (
             <PolicyDetailView
-              policy={workspace.selectedPolicy}
-              status={workspace.resolvePolicyStatus(workspace.selectedPolicy)}
-              currentVersionLabel={workspace.currentPolicyVersion?.versionLabel ?? "Current version"}
-              effectiveDate={workspace.currentPolicyVersion?.effectiveDate ?? null}
-              changeSummary={workspace.currentPolicyVersion?.changeSummary ?? null}
+              policy={data.selectedPolicy}
+              status={data.resolvePolicyStatus(data.selectedPolicy)}
+              currentVersionLabel={data.currentPolicyVersion?.versionLabel ?? "Current version"}
+              effectiveDate={data.currentPolicyVersion?.effectiveDate ?? null}
+              changeSummary={data.currentPolicyVersion?.changeSummary ?? null}
               checked={policyConfirmed}
               onCheckedChange={setPolicyConfirmed}
               onBack={() => setPolicyDetailOpen(false)}
@@ -190,28 +231,28 @@ export function EmployeePwaApp() {
             />
           ) : (
             <PoliciesListView
-              policies={workspace.assignedPolicies}
-              resolveStatus={workspace.resolvePolicyStatus}
+              policies={data.assignedPolicies}
+              resolveStatus={data.resolvePolicyStatus}
               onOpenPolicy={handleOpenPolicy}
-              versionLookup={(policy) => workspace.policyVersionLabels[policy.id] ?? "Current version"}
+              versionLookup={(policy) => data.policyVersionLabels[policy.id] ?? "Current version"}
             />
           )
         ) : null}
 
         {tab === "help" ? (
           <HelpTabView
-            prompts={workspace.assistantPrompts}
+            prompts={data.assistantPrompts}
             input={assistantInput}
             onInputChange={setAssistantInput}
             onPrompt={(prompt) => {
               setAssistantInput(prompt);
-              void workspace.submitAssistantPrompt(prompt);
+              void actions.submitAssistantPrompt(prompt);
             }}
             onSubmit={handleAssistantSubmit}
-            loading={workspace.assistantLoading}
-            reply={workspace.assistantReply}
-            nextStepTitle={workspace.nextStepTitle}
-            pendingItems={workspace.pendingItems}
+            loading={actions.assistantLoading}
+            reply={actions.assistantReply}
+            nextStepTitle={data.nextStepTitle}
+            pendingItems={data.pendingItems}
           />
         ) : null}
       </section>
