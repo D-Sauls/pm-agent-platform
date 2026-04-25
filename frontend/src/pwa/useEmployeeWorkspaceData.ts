@@ -95,6 +95,13 @@ export function useEmployeeWorkspaceData(input: {
       ),
     [policyVersions]
   );
+  const policyEffectiveDates = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(policyVersions).map(([policyId, versions]) => [policyId, versions[0]?.effectiveDate ?? null])
+      ),
+    [policyVersions]
+  );
   const completionPercent =
     onboardingProgress?.nextStep?.completionPercentage ?? onboardingProgress?.progress?.completionPercentage ?? 0;
   const overdueCount = compliance.filter((item) => item.status === "overdue").length;
@@ -139,10 +146,10 @@ export function useEmployeeWorkspaceData(input: {
     () =>
       uniq([
         "What should I do next?",
-        "Do I need to complete every course?",
-        "What am I missing for compliance?",
-        nextCourse ? `Summarize ${nextCourse.title}` : "Summarize my onboarding path",
-        nextPolicy ? `Explain ${nextPolicy.title}` : "Explain my assigned policy"
+        "Show incomplete training",
+        "Which policy is still pending?",
+        nextPolicy ? `Explain ${nextPolicy.title}` : "Explain my assigned policy",
+        nextCourse ? `Help me finish ${nextCourse.title}` : "Summarize my onboarding path"
       ]),
     [nextCourse, nextPolicy]
   );
@@ -340,6 +347,7 @@ export function useEmployeeWorkspaceData(input: {
     selectedPolicyVersions,
     currentPolicyVersion,
     policyVersionLabels,
+    policyEffectiveDates,
     lesson,
     downloads,
     readyDownloads,

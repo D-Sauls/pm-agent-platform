@@ -1,6 +1,13 @@
-import { type FormEvent, type ReactNode, useState } from "react";
+import { type FormEvent, type ReactNode, useMemo, useState } from "react";
 import { type ThemeMode } from "./theme";
 import type { EmployeeCourse, EmployeePolicy } from "./types";
+
+type BadgeTone = "neutral" | "success" | "warning" | "danger" | "info";
+
+type OfflineIndicator = {
+  label: string;
+  tone: BadgeTone;
+};
 
 export function AuthScreen(props: {
   appName: string;
@@ -60,15 +67,21 @@ export function AuthScreen(props: {
 
   return (
     <main className="auth-shell">
-      <section className="auth-card">
+      <section className="auth-card auth-card--mobile">
         <div className="auth-card__top">
           <div className="brand-mark">{props.logoText}</div>
           <ThemeToggle value={props.themeMode} onChange={props.onThemeModeChange} />
         </div>
-        <div className="auth-copy">
-          <p className="eyebrow">Employee access</p>
+
+        <div className="auth-copy auth-copy--hero">
+          <p className="eyebrow">Employee onboarding</p>
           <h1>{props.appName}</h1>
           <p>{props.welcomeMessage}</p>
+        </div>
+
+        <div className="meta-badge-row">
+          <MetaBadge tone="info">Secure sign-in</MetaBadge>
+          <MetaBadge tone="neutral">Offline-ready after login</MetaBadge>
         </div>
 
         <div className="segmented-control" role="tablist" aria-label="Authentication mode">
@@ -92,7 +105,13 @@ export function AuthScreen(props: {
           <form className="auth-form" onSubmit={handleLoginSubmit}>
             <label className="field-group">
               <span>Employee ID</span>
-              <input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" inputMode="text" />
+              <input
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                autoComplete="username"
+                autoCapitalize="none"
+                placeholder="Enter your employee ID"
+              />
             </label>
             <PasswordField
               label="Password"
@@ -110,14 +129,20 @@ export function AuthScreen(props: {
                 Reset password
               </a>
             ) : (
-              <p className="helper-text">If you only received an activation link, use Activate account first.</p>
+              <p className="helper-text">If you received an activation link first, use Activate account to set your password.</p>
             )}
           </form>
         ) : (
           <form className="auth-form" onSubmit={handleActivationSubmit}>
             <label className="field-group">
               <span>Activation token</span>
-              <input value={props.activationToken} onChange={(event) => props.onActivationTokenChange(event.target.value)} autoComplete="off" />
+              <input
+                value={props.activationToken}
+                onChange={(event) => props.onActivationTokenChange(event.target.value)}
+                autoComplete="off"
+                autoCapitalize="none"
+                placeholder="Paste the activation token"
+              />
             </label>
             <PasswordField
               label="Create password"
@@ -138,7 +163,7 @@ export function AuthScreen(props: {
             <button type="submit" className="primary-button" disabled={props.loading}>
               {props.loading ? "Activating..." : "Activate and continue"}
             </button>
-            <p className="helper-text">Use this once to set your first password securely. After that, sign in with your employee ID and password.</p>
+            <p className="helper-text">Use this once to create your password securely, then sign in with your employee ID.</p>
           </form>
         )}
 
@@ -149,6 +174,8 @@ export function AuthScreen(props: {
 }
 
 export function HomeTabView(props: {
+  greeting: string;
+  employeeName: string;
   completionPercent: number;
   nextStepTitle: string;
   nextStepDescription: string;
@@ -160,9 +187,28 @@ export function HomeTabView(props: {
 }) {
   return (
     <div className="screen-stack">
-      <section className="hero-card">
-        <p className="eyebrow">Your next step</p>
-        <h2>{props.nextStepTitle}</h2>
+      <section className="hero-card hero-card--welcome">
+        <div className="section-header section-header--stacked">
+          <div>
+            <p className="eyebrow">Welcome back</p>
+            <h2>{props.greeting}</h2>
+            <p className="helper-text">{props.employeeName}</p>
+          </div>
+          <MetaBadge tone={props.overdueCount > 0 ? "danger" : "success"}>
+            {props.overdueCount > 0 ? `${props.overdueCount} overdue` : "On track"}
+          </MetaBadge>
+        </div>
+
+        <div className="summary-grid-mobile">
+          <MetricTile label="Progress" value={`${props.completionPercent}%`} note="Assigned onboarding" />
+          <MetricTile label="Pending" value={`${props.pendingItems.length}`} note="Items left" />
+          <MetricTile label="Offline" value={`${props.readyDownloads}`} note="Ready on device" />
+        </div>
+      </section>
+
+      <section className="detail-card detail-card--accent">
+        <p className="eyebrow">Next step</p>
+        <h3>{props.nextStepTitle}</h3>
         <p>{props.nextStepDescription}</p>
         <div className="progress-row">
           <strong>{props.completionPercent}% complete</strong>
@@ -170,35 +216,44 @@ export function HomeTabView(props: {
         </div>
         <ProgressBar value={props.completionPercent} />
         <button type="button" className="primary-button" onClick={props.onContinue}>
-          Continue
+          Continue assigned work
         </button>
       </section>
 
+      {props.overdueCount > 0 ? (
+        <section className="detail-card detail-card--warning">
+          <div className="section-header section-header--stacked">
+            <div>
+              <p className="eyebrow">Needs attention</p>
+              <h3>Overdue items are blocking full completion</h3>
+            </div>
+            <MetaBadge tone="danger">Resolve soon</MetaBadge>
+          </div>
+          <p>Finish the overdue task{props.overdueCount === 1 ? "" : "s"} first so your onboarding and compliance status stays current.</p>
+        </section>
+      ) : null}
+
       <section className="detail-card">
-        <div className="section-header">
-          <h3>Pending now</h3>
-          {props.overdueCount > 0 ? <StatusChip status="overdue">{props.overdueCount} overdue</StatusChip> : null}
+        <div className="section-header section-header--stacked">
+          <div>
+            <p className="eyebrow">Pending now</p>
+            <h3>Assigned items still open</h3>
+          </div>
         </div>
         {props.pendingItems.length > 0 ? (
-          <ul className="simple-list">
+          <ul className="simple-list simple-list--compact">
             {props.pendingItems.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
         ) : (
-          <p className="helper-text">All assigned items are complete.</p>
+          <p className="helper-text">All current assigned work is complete.</p>
         )}
       </section>
 
       <section className="detail-card detail-card--split">
-        <div>
-          <h3>Offline access</h3>
-          <p>{props.readyDownloads} assigned item{props.readyDownloads === 1 ? "" : "s"} available offline.</p>
-        </div>
-        <div>
-          <h3>Sync queue</h3>
-          <p>{props.pendingDownloads} item{props.pendingDownloads === 1 ? "" : "s"} waiting for the next sync.</p>
-        </div>
+        <MetricTile label="Offline access" value={`${props.readyDownloads}`} note="assigned item(s) available" compact />
+        <MetricTile label="Sync queue" value={`${props.pendingDownloads}`} note="waiting to sync" compact />
       </section>
     </div>
   );
@@ -208,35 +263,45 @@ export function TrainingListView(props: {
   courses: EmployeeCourse[];
   progress: Record<string, { progressPercent: number }>;
   resolveStatus: (course: EmployeeCourse) => "completed" | "pending" | "overdue";
+  offlineLookup: (courseId: string) => OfflineIndicator;
   onOpenCourse: (course: EmployeeCourse) => void;
 }) {
   return (
     <section className="screen-stack">
-      <div className="section-header">
-        <div>
-          <p className="eyebrow">Assigned training</p>
-          <h2>Courses</h2>
-        </div>
-      </div>
+      <section className="detail-card detail-card--intro">
+        <p className="eyebrow">Assigned training</p>
+        <h2>Courses</h2>
+        <p>Only the training assigned to your onboarding path appears here.</p>
+      </section>
       {props.courses.length > 0 ? (
-        props.courses.map((course) => (
-          <article key={course.id} className="list-card-mobile">
-            <div className="list-card-mobile__header">
-              <div>
-                <h3>{course.title}</h3>
-                <p>{course.description}</p>
+        props.courses.map((course) => {
+          const totalLessons = course.modules.reduce((count, module) => count + module.lessons.length, 0);
+          const offline = props.offlineLookup(course.id);
+          const progressPercent = Math.round(props.progress[course.id]?.progressPercent ?? 0);
+          return (
+            <article key={course.id} className="list-card-mobile">
+              <div className="list-card-mobile__header">
+                <div>
+                  <h3>{course.title}</h3>
+                  <p>{course.description}</p>
+                </div>
+                <StatusChip status={props.resolveStatus(course)}>{props.resolveStatus(course)}</StatusChip>
               </div>
-              <StatusChip status={props.resolveStatus(course)}>{props.resolveStatus(course)}</StatusChip>
-            </div>
-            <ProgressBar value={props.progress[course.id]?.progressPercent ?? 0} />
-            <div className="list-card-mobile__footer">
-              <span>{Math.round(props.progress[course.id]?.progressPercent ?? 0)}% complete</span>
-              <button type="button" className="ghost-button" onClick={() => props.onOpenCourse(course)}>
-                Open course
-              </button>
-            </div>
-          </article>
-        ))
+              <div className="meta-badge-row">
+                <MetaBadge tone={offline.tone}>{offline.label}</MetaBadge>
+                <MetaBadge tone="neutral">{course.modules.length} module{course.modules.length === 1 ? "" : "s"}</MetaBadge>
+                <MetaBadge tone="neutral">{totalLessons} lesson{totalLessons === 1 ? "" : "s"}</MetaBadge>
+              </div>
+              <ProgressBar value={progressPercent} />
+              <div className="list-card-mobile__footer">
+                <span>{progressPercent}% complete</span>
+                <button type="button" className="ghost-button" onClick={() => props.onOpenCourse(course)}>
+                  Continue course
+                </button>
+              </div>
+            </article>
+          );
+        })
       ) : (
         <EmptyState title="No assigned courses" body="Assigned training will appear here when your onboarding path is ready." />
       )}
@@ -249,18 +314,24 @@ export function CourseDetailView(props: {
   lesson: EmployeeCourse["modules"][number]["lessons"][number] | null;
   progressPercent: number;
   status: "completed" | "pending" | "overdue";
-  offline: boolean;
+  offlineIndicator: OfflineIndicator;
+  continueLabel: string;
+  selectedLessonId: string | null;
   onBack: () => void;
+  onContinue: () => void;
   onOpenLesson: (lessonId: string) => void;
   onCompleteLesson: () => void;
 }) {
+  const totalLessons = props.course.modules.reduce((count, module) => count + module.lessons.length, 0);
+
   return (
     <div className="screen-stack">
       <button type="button" className="back-button" onClick={props.onBack}>
         Back to training
       </button>
-      <section className="detail-card">
-        <div className="section-header">
+
+      <section className="detail-card detail-card--accent">
+        <div className="section-header section-header--stacked">
           <div>
             <p className="eyebrow">Course detail</p>
             <h2>{props.course.title}</h2>
@@ -268,34 +339,57 @@ export function CourseDetailView(props: {
           <StatusChip status={props.status}>{props.status}</StatusChip>
         </div>
         <p>{props.course.description}</p>
+        <div className="meta-badge-row">
+          <MetaBadge tone={props.offlineIndicator.tone}>{props.offlineIndicator.label}</MetaBadge>
+          <MetaBadge tone="neutral">{props.course.modules.length} module{props.course.modules.length === 1 ? "" : "s"}</MetaBadge>
+          <MetaBadge tone="neutral">{totalLessons} lesson{totalLessons === 1 ? "" : "s"}</MetaBadge>
+        </div>
+        <div className="progress-row">
+          <strong>{Math.round(props.progressPercent)}% complete</strong>
+          <span>Keep going with the next assigned lesson</span>
+        </div>
         <ProgressBar value={props.progressPercent} />
-        <p className="helper-text">{props.offline ? "Downloaded lessons remain available offline when already cached." : "Progress updates save immediately while you are online."}</p>
+        <button type="button" className="primary-button" onClick={props.onContinue}>
+          {props.continueLabel}
+        </button>
       </section>
 
       {props.course.modules.map((module) => (
         <section key={module.id} className="detail-card">
-          <div className="section-header">
-            <h3>{module.title}</h3>
-            <span>{module.lessons.length} lesson{module.lessons.length === 1 ? "" : "s"}</span>
+          <div className="section-header section-header--stacked">
+            <div>
+              <p className="eyebrow">Module</p>
+              <h3>{module.title}</h3>
+            </div>
+            <MetaBadge tone="neutral">{module.lessons.length} lesson{module.lessons.length === 1 ? "" : "s"}</MetaBadge>
           </div>
           <div className="lesson-list-mobile">
-            {module.lessons.map((lesson) => (
-              <button key={lesson.id} type="button" className="lesson-tile" onClick={() => props.onOpenLesson(lesson.id)}>
-                <span>{lesson.title}</span>
-                <small>{lesson.contentType} · {lesson.estimatedDuration} min</small>
-              </button>
-            ))}
+            {module.lessons.map((lesson) => {
+              const active = props.selectedLessonId === lesson.id;
+              return (
+                <button
+                  key={lesson.id}
+                  type="button"
+                  className={active ? "lesson-tile lesson-tile--active" : "lesson-tile"}
+                  onClick={() => props.onOpenLesson(lesson.id)}
+                >
+                  <span>{lesson.title}</span>
+                  <small>{lesson.contentType} · {lesson.estimatedDuration} min</small>
+                </button>
+              );
+            })}
           </div>
         </section>
       ))}
 
       {props.lesson ? (
         <section className="detail-card">
-          <div className="section-header">
+          <div className="section-header section-header--stacked">
             <div>
               <p className="eyebrow">Current lesson</p>
               <h3>{props.lesson.title}</h3>
             </div>
+            <MetaBadge tone="info">Continue here</MetaBadge>
           </div>
           <LessonContent lesson={props.lesson} />
           <button type="button" className="primary-button" onClick={props.onCompleteLesson}>
@@ -310,17 +404,17 @@ export function CourseDetailView(props: {
 export function PoliciesListView(props: {
   policies: EmployeePolicy[];
   resolveStatus: (policy: EmployeePolicy) => "completed" | "pending" | "overdue";
-  onOpenPolicy: (policy: EmployeePolicy) => void;
   versionLookup: (policy: EmployeePolicy) => string;
+  effectiveDateLookup: (policy: EmployeePolicy) => string | null;
+  onOpenPolicy: (policy: EmployeePolicy) => void;
 }) {
   return (
     <section className="screen-stack">
-      <div className="section-header">
-        <div>
-          <p className="eyebrow">Assigned policies</p>
-          <h2>Policies</h2>
-        </div>
-      </div>
+      <section className="detail-card detail-card--intro">
+        <p className="eyebrow">Assigned policies</p>
+        <h2>Policies</h2>
+        <p>Review and acknowledge only the policies assigned to your onboarding path.</p>
+      </section>
       {props.policies.length > 0 ? (
         props.policies.map((policy) => (
           <article key={policy.id} className="list-card-mobile">
@@ -331,8 +425,14 @@ export function PoliciesListView(props: {
               </div>
               <StatusChip status={props.resolveStatus(policy)}>{props.resolveStatus(policy)}</StatusChip>
             </div>
+            <div className="meta-badge-row">
+              <MetaBadge tone="info">{props.versionLookup(policy)}</MetaBadge>
+              <MetaBadge tone="neutral">
+                {props.effectiveDateLookup(policy) ? formatDate(props.effectiveDateLookup(policy) as string) : "Current effective date"}
+              </MetaBadge>
+            </div>
             <div className="list-card-mobile__footer">
-              <span>{props.versionLookup(policy)}</span>
+              <span>{policy.category}</span>
               <button type="button" className="ghost-button" onClick={() => props.onOpenPolicy(policy)}>
                 Review policy
               </button>
@@ -362,14 +462,16 @@ export function PolicyDetailView(props: {
       <button type="button" className="back-button" onClick={props.onBack}>
         Back to policies
       </button>
-      <section className="detail-card">
-        <div className="section-header">
+
+      <section className="detail-card detail-card--accent">
+        <div className="section-header section-header--stacked">
           <div>
             <p className="eyebrow">Policy acknowledgement</p>
             <h2>{props.policy.title}</h2>
           </div>
           <StatusChip status={props.status}>{props.status}</StatusChip>
         </div>
+
         <div className="policy-meta-grid">
           <div>
             <span>Version</span>
@@ -380,13 +482,15 @@ export function PolicyDetailView(props: {
             <strong>{props.effectiveDate ? formatDate(props.effectiveDate) : "Current"}</strong>
           </div>
         </div>
+
         <p>{props.policy.category}</p>
         {props.changeSummary ? <p className="helper-text">Latest update: {props.changeSummary}</p> : null}
+
         <div className="acknowledgement-box">
           <strong>You are acknowledging {props.currentVersionLabel}</strong>
           <label className="checkbox-row">
             <input type="checkbox" checked={props.checked} onChange={(event) => props.onCheckedChange(event.target.checked)} />
-            <span>I have reviewed this policy and understand that this acknowledgement applies to the current published version.</span>
+            <span>I have reviewed this policy and understand that my acknowledgement applies to the current published version.</span>
           </label>
           <button type="button" className="primary-button" disabled={!props.checked} onClick={props.onAcknowledge}>
             Confirm acknowledgement
@@ -413,18 +517,41 @@ export function HelpTabView(props: {
   } | null;
   nextStepTitle: string;
   pendingItems: string[];
+  pendingPolicyTitle: string | null;
+  incompleteTrainingCount: number;
 }) {
+  const helperCards = useMemo(
+    () => [
+      { label: "Next step", value: props.nextStepTitle },
+      { label: "Pending policy", value: props.pendingPolicyTitle ?? "Nothing pending" },
+      {
+        label: "Training left",
+        value: `${props.incompleteTrainingCount} course${props.incompleteTrainingCount === 1 ? "" : "s"}`
+      }
+    ],
+    [props.incompleteTrainingCount, props.nextStepTitle, props.pendingPolicyTitle]
+  );
+
   return (
     <div className="screen-stack">
-      <section className="detail-card">
-        <div className="section-header">
+      <section className="detail-card detail-card--accent">
+        <div className="section-header section-header--stacked">
           <div>
             <p className="eyebrow">Help</p>
             <h2>Learning assistant</h2>
           </div>
+          <MetaBadge tone="info">Context-aware</MetaBadge>
         </div>
-        <p>Ask about assigned courses, policies, your next step, or what still needs attention.</p>
-        <div className="prompt-grid-mobile">
+        <p>Ask what to do next, which policy is pending, how to finish training, or for a plain-language explanation of a policy.</p>
+        <div className="summary-grid-mobile summary-grid-mobile--compact">
+          {helperCards.map((item) => (
+            <MetricTile key={item.label} label={item.label} value={item.value} compact />
+          ))}
+        </div>
+      </section>
+
+      <section className="detail-card">
+        <div className="meta-badge-row">
           {props.prompts.map((prompt) => (
             <button key={prompt} type="button" className="prompt-chip-mobile" onClick={() => props.onPrompt(prompt)}>
               {prompt}
@@ -436,30 +563,24 @@ export function HelpTabView(props: {
             rows={4}
             value={props.input}
             onChange={(event) => props.onInputChange(event.target.value)}
-            placeholder="Ask what to do next, explain a policy, or check your compliance status."
+            placeholder="Ask what to do next, explain a policy, or show incomplete training."
           />
           <button type="submit" className="primary-button" disabled={props.loading || !props.input.trim()}>
-            {props.loading ? "Thinking..." : "Send"}
+            {props.loading ? "Thinking..." : "Ask assistant"}
           </button>
         </form>
       </section>
 
       <section className="detail-card detail-card--split">
-        <div>
-          <h3>Current context</h3>
-          <p>{props.nextStepTitle}</p>
-        </div>
-        <div>
-          <h3>Pending items</h3>
-          <p>{props.pendingItems.length > 0 ? props.pendingItems.join(", ") : "Nothing pending right now."}</p>
-        </div>
+        <MetricTile label="Still pending" value={`${props.pendingItems.length}`} note="assigned item(s) open" compact />
+        <MetricTile label="Assistant scope" value="Training and policy help" note="no admin data shown" compact />
       </section>
 
       {props.reply ? (
         <section className="detail-card">
-          <h3>Assistant guidance</h3>
-          <p>{props.reply.synthesizedSummary}</p>
-          <InfoGroup title="Key findings" items={props.reply.keyFindings} />
+          <p className="eyebrow">Assistant guidance</p>
+          <h3>{props.reply.synthesizedSummary}</h3>
+          <InfoGroup title="Key points" items={props.reply.keyFindings} />
           <InfoGroup title="Recommended actions" items={props.reply.recommendedActions} />
           <InfoGroup title="Notes" items={props.reply.warnings} emptyLabel="No additional notes." />
         </section>
@@ -522,8 +643,23 @@ function PasswordField(props: {
   );
 }
 
+function MetricTile(props: { label: string; value: string; note?: string; compact?: boolean }) {
+  return (
+    <article className={props.compact ? "metric-tile metric-tile--compact" : "metric-tile"}>
+      <span>{props.label}</span>
+      <strong>{props.value}</strong>
+      {props.note ? <small>{props.note}</small> : null}
+    </article>
+  );
+}
+
+function MetaBadge(props: { tone: BadgeTone; children: ReactNode }) {
+  return <span className={`meta-badge meta-badge--${props.tone}`}>{props.children}</span>;
+}
+
 function StatusChip(props: { status: "completed" | "pending" | "overdue"; children: ReactNode }) {
-  return <span className={`status-chip-mobile status-chip-mobile--${props.status}`}>{props.children}</span>;
+  const tone = props.status === "completed" ? "success" : props.status === "overdue" ? "danger" : "warning";
+  return <span className={`meta-badge meta-badge--${tone} status-chip-mobile`}>{props.children}</span>;
 }
 
 function ProgressBar(props: { value: number }) {
@@ -555,7 +691,7 @@ function InfoGroup(props: { title: string; items: string[]; emptyLabel?: string 
     <div className="info-group">
       <h4>{props.title}</h4>
       {props.items.length > 0 ? (
-        <ul className="simple-list">
+        <ul className="simple-list simple-list--compact">
           {props.items.map((item) => (
             <li key={item}>{item}</li>
           ))}
