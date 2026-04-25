@@ -8,19 +8,22 @@ export interface AdminSession {
   };
 }
 
-const ADMIN_TOKEN_KEY = "pm_agent_admin_token";
+const ADMIN_TOKEN_KEY = "onboarding_admin_token";
+const LEGACY_ADMIN_TOKEN_KEY = "pm_agent_admin_token";
 const ADMIN_API_BASE = "/api/admin";
 
 export function getAdminToken(): string | null {
-  return localStorage.getItem(ADMIN_TOKEN_KEY);
+  return localStorage.getItem(ADMIN_TOKEN_KEY) ?? localStorage.getItem(LEGACY_ADMIN_TOKEN_KEY);
 }
 
 export function setAdminToken(token: string): void {
   localStorage.setItem(ADMIN_TOKEN_KEY, token);
+  localStorage.removeItem(LEGACY_ADMIN_TOKEN_KEY);
 }
 
 export function clearAdminToken(): void {
   localStorage.removeItem(ADMIN_TOKEN_KEY);
+  localStorage.removeItem(LEGACY_ADMIN_TOKEN_KEY);
 }
 
 async function adminFetch(path: string, init?: RequestInit): Promise<Response> {
@@ -105,3 +108,4 @@ export async function patchAdminJson<T>(path: string, body?: unknown): Promise<T
   }
   return response.json();
 }
+

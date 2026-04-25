@@ -119,6 +119,21 @@ export class UserImportService {
     return job ? this.repository.listRows(jobId) : [];
   }
 
+  listUsers(tenantId: string) {
+    return this.repository.listUsers(tenantId);
+  }
+
+  getUser(tenantId: string, userId: string) {
+    return this.repository.listUsers(tenantId).find((user) => user.id === userId) ?? null;
+  }
+
+  listAssignments(tenantId: string, userId?: string) {
+    return this.repository.listAssignments(tenantId, userId);
+  }
+
+  listAuditEvents(tenantId: string) {
+    return this.repository.listAuditEvents(tenantId);
+  }
   preview(tenantId: string, jobId: string): { job: UserImportJob; rows: UserImportRow[] } | null {
     const job = this.getJob(tenantId, jobId);
     if (!job) return null;
@@ -200,3 +215,5 @@ export class UserImportService {
     return { job: completedJob, provisionedUsers, failedRows, assignmentOutcomes };
   }
 }
+
+

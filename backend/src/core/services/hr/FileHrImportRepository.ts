@@ -198,6 +198,12 @@ export class FileHrImportRepository {
     this.write(state);
   }
 
+  listAssignments(tenantId: string, userId?: string): RoleAssignmentOutcome[] {
+    const userIds = new Set(this.listUsers(tenantId).map((user) => user.id));
+    return this.read().assignments.filter(
+      (assignment) => userIds.has(assignment.userId) && (!userId || assignment.userId === userId)
+    );
+  }
   upsertComplianceStatuses(statuses: ComplianceStatus[]): void {
     const state = this.read();
     for (const status of statuses) {
@@ -232,4 +238,6 @@ export class FileHrImportRepository {
     return this.read().auditEvents.filter((event) => event.tenantId === tenantId);
   }
 }
+
+
 

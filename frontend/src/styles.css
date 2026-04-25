@@ -1375,3 +1375,30 @@ a {
   }
 }
 
+
+.admin-empty-state {
+  margin: 0;
+  padding: 0.85rem;
+  border: 1px dashed var(--border);
+  border-radius: 0.5rem;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--surface-muted) 86%, transparent);
+}
+
+.admin-settings-form {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.admin-settings-form label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.admin-upload-box input[type="file"] {
+  width: 100%;
+  max-width: 24rem;
+  border-style: dashed;
+}

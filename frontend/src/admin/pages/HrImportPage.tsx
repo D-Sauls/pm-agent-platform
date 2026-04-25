@@ -1,13 +1,110 @@
-import { useState } from "react";
-import { getStatusTone, importPreviewRows } from "../data/adminExperienceData";
+import { ChangeEvent, useEffect, useState } from "react";
+import {
+  formatAdminDate,
+  getStatusTone,
+  listHrImportJobs,
+  loadHrImportPreview,
+  processHrImportJob,
+  uploadHrImportFile,
+  type HrImportJob,
+  type HrImportRow
+} from "../api/adminExperienceApi";
 
 const importSteps = ["Upload", "Preview", "Validate", "Process"] as const;
 
+type ImportStep = (typeof importSteps)[number];
+
 export function HrImportPage() {
-  const [currentStep, setCurrentStep] = useState<(typeof importSteps)[number]>("Preview");
-  const errors = importPreviewRows.filter((row) => row.status === "error").length;
-  const warnings = importPreviewRows.filter((row) => row.status === "warning" || row.status === "duplicate").length;
-  const readyRows = importPreviewRows.filter((row) => row.status === "ready").length;
+  const [currentStep, setCurrentStep] = useState<ImportStep>("Upload");
+  const [jobs, setJobs] = useState<HrImportJob[]>([]);
+  const [activeJob, setActiveJob] = useState<HrImportJob | null>(null);
+  const [rows, setRows] = useState<HrImportRow[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    listHrImportJobs()
+      .then(async (result) => {
+        if (cancelled) return;
+        const sortedJobs = [...result.jobs].sort((a, b) => String(b.startedAt).localeCompare(String(a.startedAt)));
+        setJobs(sortedJobs);
+        const latest = sortedJobs[0];
+        if (latest) {
+          const preview = await loadHrImportPreview(latest.id);
+          if (!cancelled) {
+            setActiveJob(preview.job);
+            setRows(preview.rows);
+            setCurrentStep(preview.job.status === "completed" ? "Process" : "Preview");
+          }
+        }
+      })
+      .catch((loadError) => {
+        if (!cancelled) setError(loadError instanceof Error ? loadError.message : "Failed to load HR import jobs");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const errors = rows.filter((row) => row.validationStatus === "invalid").length;
+  const warnings = rows.filter((row) => row.validationStatus === "warning").length;
+  const readyRows = rows.filter((row) => row.validationStatus === "valid").length;
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    setSelectedFile(event.target.files?.[0] ?? null);
+    setMessage(null);
+    setError(null);
+  }
+
+  async function handleUpload() {
+    if (!selectedFile) return;
+    setUploading(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await uploadHrImportFile(selectedFile);
+      setActiveJob(result.job);
+      setRows(result.rows);
+      setJobs((current) => [result.job, ...current.filter((job) => job.id !== result.job.id)]);
+      setCurrentStep("Preview");
+      setMessage("Dry-run preview created. Resolve validation errors before processing.");
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Failed to upload HR import file");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleProcess() {
+    if (!activeJob || errors > 0) return;
+    setProcessing(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await processHrImportJob(activeJob.id);
+      const preview = await loadHrImportPreview(result.job.id);
+      setActiveJob(preview.job);
+      setRows(preview.rows);
+      setCurrentStep("Process");
+      setMessage(`Import processed: ${result.job.successfulRows} successful, ${result.job.failedRows} failed.`);
+    } catch (processError) {
+      setError(processError instanceof Error ? processError.message : "Failed to process HR import");
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  if (loading) return <p className="admin-loading">Loading HR import workspace...</p>;
 
   return (
     <section className="admin-page-stack">
@@ -16,6 +113,8 @@ export function HrImportPage() {
         <h1>Upload, validate, then provision safely</h1>
         <p>Imports run through dry-run preview before processing so invalid rows do not create broken users.</p>
       </div>
+      {error ? <p className="admin-error">{error}</p> : null}
+      {message ? <p className="admin-success-text">{message}</p> : null}
 
       <div className="admin-import-stepper" aria-label="HR import steps">
         {importSteps.map((step) => (
@@ -39,9 +138,12 @@ export function HrImportPage() {
             </div>
           </div>
           <div className="admin-upload-box">
-            <strong>Drop HR spreadsheet here</strong>
+            <strong>{selectedFile ? selectedFile.name : "Choose HR spreadsheet"}</strong>
             <span>Dry-run preview is enabled before any provisioning action.</span>
-            <button type="button" className="admin-button admin-button--ghost">Choose file</button>
+            <input type="file" accept=".csv,.xlsx" onChange={handleFileChange} />
+            <button type="button" className="admin-button admin-button--ghost" disabled={!selectedFile || uploading} onClick={handleUpload}>
+              {uploading ? "Uploading..." : "Upload and preview"}
+            </button>
           </div>
         </article>
 
@@ -52,14 +154,19 @@ export function HrImportPage() {
               <p>Resolve errors before processing. Warnings require admin review.</p>
             </div>
           </div>
+          {activeJob ? <p className="helper-text">Latest job: {activeJob.fileName} - {activeJob.status} - {formatAdminDate(activeJob.startedAt)}</p> : null}
           <div className="admin-summary-list">
             <div><strong>{readyRows}</strong><span>Rows ready</span></div>
             <div><strong>{warnings}</strong><span>Warnings or duplicates</span></div>
             <div><strong>{errors}</strong><span>Blocking errors</span></div>
           </div>
           <div className="admin-action-row">
-            <button type="button" className="admin-button admin-button--ghost">Run dry-run preview</button>
-            <button type="button" className="admin-button" disabled={errors > 0}>Process valid rows</button>
+            <button type="button" className="admin-button admin-button--ghost" disabled={!activeJob} onClick={() => activeJob && loadHrImportPreview(activeJob.id).then((preview) => { setActiveJob(preview.job); setRows(preview.rows); setMessage("Dry-run preview refreshed."); }).catch((previewError) => setError(previewError instanceof Error ? previewError.message : "Failed to refresh preview"))}>
+              Refresh dry-run preview
+            </button>
+            <button type="button" className="admin-button" disabled={!activeJob || errors > 0 || processing} onClick={handleProcess}>
+              {processing ? "Processing..." : "Process valid rows"}
+            </button>
           </div>
         </article>
 
@@ -71,37 +178,48 @@ export function HrImportPage() {
             </div>
             <span className="admin-badge admin-badge--warning">Dry-run</span>
           </div>
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Row</th>
-                  <th>Employee ID</th>
-                  <th>Name</th>
-                  <th>Department</th>
-                  <th>Role</th>
-                  <th>Outcome</th>
-                </tr>
-              </thead>
-              <tbody>
-                {importPreviewRows.map((row) => (
-                  <tr key={row.row}>
-                    <td>{row.row}</td>
-                    <td>{row.employeeCode || "Missing"}</td>
-                    <td>{row.name}</td>
-                    <td>{row.department}</td>
-                    <td>{row.role}</td>
-                    <td>
-                      <span className={`admin-badge admin-badge--${getStatusTone(row.status)}`}>{row.status}</span>
-                      <p className="admin-table-note">{row.message}</p>
-                    </td>
+          {rows.length === 0 ? (
+            <p className="admin-empty-state">No import rows to preview. Upload a CSV or XLSX file to start.</p>
+          ) : (
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Row</th>
+                    <th>Employee ID</th>
+                    <th>Name</th>
+                    <th>Department</th>
+                    <th>Role</th>
+                    <th>Outcome</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {rows.map((row) => {
+                    const mapped = row.mappedData ?? {};
+                    const firstName = typeof mapped.firstName === "string" ? mapped.firstName : "";
+                    const lastName = typeof mapped.lastName === "string" ? mapped.lastName : "";
+                    const messages = [...row.errorMessages, ...row.warningMessages];
+                    return (
+                      <tr key={row.id}>
+                        <td>{row.rowNumber}</td>
+                        <td>{typeof mapped.employeeCode === "string" && mapped.employeeCode ? mapped.employeeCode : "Missing"}</td>
+                        <td>{`${firstName} ${lastName}`.trim() || "Not mapped"}</td>
+                        <td>{typeof mapped.department === "string" ? mapped.department : "Not mapped"}</td>
+                        <td>{typeof mapped.roleName === "string" ? mapped.roleName : "Not mapped"}</td>
+                        <td>
+                          <span className={`admin-badge admin-badge--${getStatusTone(row.validationStatus)}`}>{row.validationStatus}</span>
+                          <p className="admin-table-note">{messages[0] ?? row.provisioningStatus}</p>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </article>
       </div>
     </section>
   );
 }
+

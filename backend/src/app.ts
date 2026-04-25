@@ -27,7 +27,7 @@ export function createApp() {
   app.use(cors());
   app.use(requestContextMiddleware);
   app.use(requestLifecycleMiddleware(loggingService, workflowTelemetryService, connectorTelemetryService));
-  app.use(express.json());
+  app.use(express.json({ limit: "7mb" }));
   app.use(
     rateLimitMiddleware(rateLimitService, loggingService, (req) => {
       if (req.path.startsWith("/api/admin") || req.path.startsWith("/admin")) {
@@ -85,3 +85,4 @@ export function createApp() {
 
   return app;
 }
+

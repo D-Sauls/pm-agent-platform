@@ -6,7 +6,6 @@ import {
   setAdminToken
 } from "../api/adminClient";
 import { AdminLayout } from "./components/AdminLayout";
-import { adminEmployees } from "./data/adminExperienceData";
 import { ContentManagementPage } from "./pages/ContentManagementPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { EmployeeCompliancePage } from "./pages/EmployeeCompliancePage";
@@ -19,7 +18,7 @@ import type { AdminPageKey, AdminUserVm } from "./types";
 export function AdminApp() {
   const [currentPage, setCurrentPage] = useState<AdminPageKey>("dashboard");
   const [adminUser, setAdminUser] = useState<AdminUserVm | null>(null);
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState(adminEmployees[0]?.id ?? "");
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
@@ -75,7 +74,7 @@ export function AdminApp() {
           }}
         />
       ) : null}
-      {currentPage === "employeeDetail" ? (
+      {currentPage === "employeeDetail" && selectedEmployeeId ? (
         <EmployeeDetailPage
           employeeId={selectedEmployeeId}
           onBack={() => setCurrentPage("employees")}
@@ -87,3 +86,4 @@ export function AdminApp() {
     </AdminLayout>
   );
 }
+
