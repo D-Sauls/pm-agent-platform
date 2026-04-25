@@ -109,6 +109,67 @@ test("activation completes pending user and returns signed employee session", ()
   );
 });
 
+test("activation endpoint rejects reused activation tokens with structured 401", async () => {
+  const suffix = Date.now();
+  const row: UserImportRow = {
+    id: `row-activation-api-${suffix}`,
+    importJobId: `job-activation-api-${suffix}`,
+    rowNumber: 2,
+    rawData: {},
+    mappedData: {
+      employeeCode: `ACT-API-${suffix}`,
+      firstName: "Activation",
+      lastName: "Endpoint",
+      workEmail: `activation-api-${suffix}@example.com`,
+      roleName: "Finance Analyst",
+      department: "Finance"
+    },
+    validationStatus: "valid",
+    errorMessages: [],
+    warningMessages: [],
+    provisioningStatus: "pending",
+    createdUserId: null
+  };
+
+  const provisioned = userProvisioningServiceV2.provision("tenant-acme", row, {
+    usernameMode: "employee_code",
+    activationMode: "activation_link",
+    requirePasswordResetOnFirstLogin: true,
+    allowManualPasswordSetupByAdmin: false,
+    duplicateEmailMode: "warning",
+    missingRoleMappingMode: "warning",
+    activationTtlHours: 72
+  });
+
+  const app = createApp();
+  const server = await listen(app);
+  try {
+    const payload = {
+      tenantId: "tenant-acme",
+      token: provisioned.oneTimeSecret,
+      password: "StrongPass123!"
+    };
+
+    const first = await fetch(`${server.base}/api/auth/activate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    assert.equal(first.status, 200);
+
+    const second = await fetch(`${server.base}/api/auth/activate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    assert.equal(second.status, 401);
+    const body = (await second.json()) as { code: string };
+    assert.equal(body.code, "UNAUTHORIZED");
+  } finally {
+    await server.close();
+  }
+});
+
 test("progress and acknowledgement are bound to authenticated employee context", async () => {
   const app = createApp();
   const server = await listen(app);

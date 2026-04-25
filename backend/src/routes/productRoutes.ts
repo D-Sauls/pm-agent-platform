@@ -419,7 +419,11 @@ productRoutes.post("/auth/activate", async (req, res, next) => {
       sessionToken: result.sessionToken
     });
   } catch (error) {
-    next(error);
+    if (error instanceof z.ZodError) {
+      next(new AppError("VALIDATION_ERROR", "Invalid activation payload", 400, { issues: error.issues }));
+      return;
+    }
+    next(new AppError("UNAUTHORIZED", error instanceof Error ? error.message : "Activation failed.", 401));
   }
 });
 
@@ -450,7 +454,15 @@ productRoutes.post("/auth/login", async (req, res, next) => {
       sessionToken: result.sessionToken
     });
   } catch (error) {
-    next(error);
+    if (error instanceof z.ZodError) {
+      next(new AppError("VALIDATION_ERROR", "Invalid employee login payload", 400, { issues: error.issues }));
+      return;
+    }
+    if (error instanceof AppError) {
+      next(error);
+      return;
+    }
+    next(new AppError("UNAUTHORIZED", "Invalid employee ID or password.", 401));
   }
 });
 
