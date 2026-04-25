@@ -1,5 +1,6 @@
 import { PromptEngine } from "../prompt/PromptEngine.js";
 import path from "node:path";
+import { env } from "../config/env.js";
 import { stubConnectors } from "./connectors/StubConnectors.js";
 import { ClickUpConnector } from "./connectors/clickup/ClickUpConnector.js";
 import type { Project, Project as ProjectModel } from "./models/projectModels.js";
@@ -15,15 +16,12 @@ import type { ConnectorConfig } from "./models/connectorModels.js";
 import type { License, Tenant } from "./models/tenantModels.js";
 import {
   MemoryAdminAuditLogRepository,
-  MemoryConnectorConfigRepository,
-  MemoryLicenseRepository,
   MemoryProjectRepository,
-  MemoryPromptMappingRepository,
   MemoryResourceRepository,
-  MemoryTenantRepository,
   MemoryTimeEntryRepository,
   MemoryUsageLogRepository
 } from "./repositories/memory/MemoryRepositories.js";
+import { createFileTenantConfigRepositories } from "./repositories/file/FileTenantConfigRepositories.js";
 import {
   FileOnboardingPathRepository,
   FileRoleProfileRepository
@@ -99,26 +97,36 @@ import { ImportMappingService } from "./services/hr/ImportMappingService.js";
 import { ImportValidationService } from "./services/hr/ImportValidationService.js";
 import { RoleAssignmentService } from "./services/hr/RoleAssignmentService.js";
 import { SpreadsheetParserService } from "./services/hr/SpreadsheetParserService.js";
+import { ActivationDeliveryService } from "./services/hr/ActivationDeliveryService.js";
 import { UserImportService } from "./services/hr/UserImportService.js";
 import { UserProvisioningService } from "./services/hr/UserProvisioningService.js";
 
-const tenantRepository = new MemoryTenantRepository();
-const licenseRepository = new MemoryLicenseRepository();
+function dataPath(fileName: string): string {
+  return path.resolve(process.cwd(), env.platformDataDir, fileName);
+}
+
+const defaultTenantId = env.defaultTenantId;
+const secondaryTenantId = env.secondaryTenantId;
+const defaultTenantName = env.defaultTenantName;
+const secondaryTenantName = env.secondaryTenantName;
+const tenantConfigRepositories = createFileTenantConfigRepositories(dataPath("tenant-config-store.json"));
+const tenantRepository = tenantConfigRepositories.tenantRepository;
+const licenseRepository = tenantConfigRepositories.licenseRepository;
 const usageLogRepository = new MemoryUsageLogRepository();
 const adminAuditLogRepository = new MemoryAdminAuditLogRepository();
 const projectRepository = new MemoryProjectRepository();
-const promptMappingRepository = new MemoryPromptMappingRepository();
+const promptMappingRepository = tenantConfigRepositories.promptMappingRepository;
 const timeEntryRepository = new MemoryTimeEntryRepository();
 const resourceRepository = new MemoryResourceRepository();
-const connectorConfigRepository = new MemoryConnectorConfigRepository();
+const connectorConfigRepository = tenantConfigRepositories.connectorConfigRepository;
 const roleProfileRepository = new FileRoleProfileRepository(
-  path.resolve(process.cwd(), "data", "onboarding-role-profiles.json")
+  dataPath("onboarding-role-profiles.json")
 );
 const onboardingPathRepository = new FileOnboardingPathRepository(
-  path.resolve(process.cwd(), "data", "onboarding-paths.json")
+  dataPath("onboarding-paths.json")
 );
 const hrImportRepository = new FileHrImportRepository(
-  path.resolve(process.cwd(), "data", "hr-import-store.json")
+  dataPath("hr-import-store.json")
 );
 
 export const tenantServiceV2 = new TenantService(
@@ -171,7 +179,7 @@ export const knowledgeIndexServiceV2 = new KnowledgeIndexService();
 export const recommendationServiceV2 = new RecommendationService(courseServiceV2, policyServiceV2);
 export const roleProfileServiceV2 = new RoleProfileService(roleProfileRepository);
 export const onboardingPathServiceV2 = new OnboardingPathService(onboardingPathRepository);
-export const complianceConfigServiceV2 = new ComplianceConfigService();
+export const complianceConfigServiceV2 = new ComplianceConfigService(dataPath("compliance-config-store.json"));
 export const policyVersionServiceV2 = new PolicyVersionService();
 export const courseVersionServiceV2 = new CourseVersionService();
 export const acknowledgementServiceV2 = new AcknowledgementService();
@@ -184,6 +192,7 @@ export const importValidationServiceV2 = new ImportValidationService(
   roleProfileServiceV2
 );
 export const userProvisioningServiceV2 = new UserProvisioningService(hrImportRepository);
+export const activationDeliveryServiceV2 = new ActivationDeliveryService();
 export const roleAssignmentServiceV2 = new RoleAssignmentService(
   roleProfileServiceV2,
   onboardingPathServiceV2,
@@ -196,6 +205,7 @@ export const userImportServiceV2 = new UserImportService(
   importMappingServiceV2,
   importValidationServiceV2,
   userProvisioningServiceV2,
+  activationDeliveryServiceV2,
   roleAssignmentServiceV2,
   importAuditServiceV2
 );
@@ -278,8 +288,8 @@ export const agenticOrchestratorServiceV2 = new AgenticOrchestratorService(
 void (async () => {
   const tenants: Tenant[] = [
     {
-      tenantId: "tenant-acme",
-      organizationName: "Acme Corp",
+      tenantId: defaultTenantId,
+      organizationName: defaultTenantName,
       status: "active",
       licenseStatus: "active",
       planType: "enterprise",
@@ -288,11 +298,11 @@ void (async () => {
       defaultPromptVersion: "onboarding_assistant:v1",
       enabledConnectors: ["microsoft-graph", "sharepoint", "teams"],
       featureFlags: ["assistantPromptV2", "hrImportPreview"],
-      metadata: { region: "us" }
+      metadata: { region: env.defaultTenantRegion }
     },
     {
-      tenantId: "tenant-beta",
-      organizationName: "Beta Industries",
+      tenantId: secondaryTenantId,
+      organizationName: secondaryTenantName,
       status: "trial",
       licenseStatus: "trial",
       planType: "starter",
@@ -301,13 +311,13 @@ void (async () => {
       defaultPromptVersion: "onboarding_assistant:v1",
       enabledConnectors: ["microsoft-graph", "sharepoint"],
       featureFlags: [],
-      metadata: { region: "eu" }
+      metadata: { region: env.secondaryTenantRegion }
     }
   ];
 
   const licenses: License[] = [
     {
-      tenantId: "tenant-acme",
+      tenantId: defaultTenantId,
       status: "active",
       planType: "enterprise",
       expiryDate: null,
@@ -315,7 +325,7 @@ void (async () => {
       lastValidatedAt: null
     },
     {
-      tenantId: "tenant-beta",
+      tenantId: secondaryTenantId,
       status: "trial",
       planType: "starter",
       expiryDate: null,
@@ -327,7 +337,7 @@ void (async () => {
   const projects: Project[] = [
     {
       projectId: "project-alpha",
-      tenantId: "tenant-acme",
+      tenantId: defaultTenantId,
       sourceSystem: "monday",
       externalProjectId: "mo-001",
       name: "Alpha Delivery Program",
@@ -336,7 +346,7 @@ void (async () => {
     },
     {
       projectId: "project-beta",
-      tenantId: "tenant-beta",
+      tenantId: secondaryTenantId,
       sourceSystem: "zoho",
       externalProjectId: "zo-001",
       name: "Beta Modernization",
@@ -346,7 +356,7 @@ void (async () => {
   ];
   const connectorConfigs: ConnectorConfig[] = [
     {
-      tenantId: "tenant-acme",
+      tenantId: defaultTenantId,
       connectorName: "clickup",
       authType: "api_key",
       baseUrl: "https://api.clickup.com/api/v2",
@@ -354,10 +364,10 @@ void (async () => {
       teamId: "team-acme",
       listId: "project-alpha",
       isEnabled: true,
-      metadata: { note: "Set CLICKUP_API_KEY__TENANT_ACME for live calls." }
+      metadata: { note: "Set a tenant-scoped connector secret for live calls." }
     },
     {
-      tenantId: "tenant-acme",
+      tenantId: defaultTenantId,
       connectorName: "sharepoint",
       authType: "oauth",
       siteId: "acme-hr-site",
@@ -405,7 +415,7 @@ void (async () => {
   const sharePointDocuments: KnowledgeDocument[] = [
     {
       id: "sp-doc-security-handbook",
-      tenantId: "tenant-acme",
+      tenantId: defaultTenantId,
       sourceSystem: "sharepoint",
       title: "Security Awareness Handbook",
       tags: ["security", "mandatory", "onboarding"],
@@ -421,7 +431,7 @@ void (async () => {
     },
     {
       id: "sp-doc-leave-standard",
-      tenantId: "tenant-acme",
+      tenantId: defaultTenantId,
       sourceSystem: "sharepoint",
       title: "Leave Standard Operating Guide",
       tags: ["hr", "leave", "policy"],
@@ -439,7 +449,7 @@ void (async () => {
   const courses: Course[] = [
     {
       id: "course-finance-onboarding",
-      tenantId: "tenant-acme",
+      tenantId: defaultTenantId,
       title: "Finance Analyst Onboarding",
       description: "Core onboarding path for finance analysts covering controls, reporting, and compliance.",
       tags: ["finance", "onboarding", "controls"],
@@ -473,7 +483,7 @@ void (async () => {
     },
     {
       id: "course-security-awareness",
-      tenantId: "tenant-acme",
+      tenantId: defaultTenantId,
       title: "Security Awareness Essentials",
       description: "Mandatory security awareness training for all employees.",
       tags: ["security", "mandatory", "onboarding"],
@@ -509,7 +519,7 @@ void (async () => {
   const policies: Policy[] = [
     {
       id: "policy-finance-controls",
-      tenantId: "tenant-acme",
+      tenantId: defaultTenantId,
       title: "Finance Controls Policy",
       category: "compliance",
       documentReference: "sharepoint://policies/finance-controls.pdf",
@@ -518,7 +528,7 @@ void (async () => {
     },
     {
       id: "policy-security-awareness",
-      tenantId: "tenant-acme",
+      tenantId: defaultTenantId,
       title: "Security Awareness Policy",
       category: "security",
       documentReference: "sharepoint://policies/security-awareness.pdf",
@@ -527,7 +537,7 @@ void (async () => {
     },
     {
       id: "policy-leave-policy",
-      tenantId: "tenant-acme",
+      tenantId: defaultTenantId,
       title: "Employee Leave Policy",
       category: "hr",
       documentReference: "sharepoint://policies/leave-policy.pdf",
@@ -537,7 +547,7 @@ void (async () => {
   ];
   const progressEntries: LearningProgress[] = [
     {
-      tenantId: "tenant-acme",
+      tenantId: defaultTenantId,
       userId: "user-fin-1",
       courseId: "course-finance-onboarding",
       moduleId: "module-finance-basics",
@@ -550,7 +560,7 @@ void (async () => {
     {
       id: "policy-version-finance-controls-v1",
       policyId: "policy-finance-controls",
-      tenantId: "tenant-acme",
+      tenantId: defaultTenantId,
       versionLabel: "v1",
       documentReference: "sharepoint://policies/finance-controls-v1.pdf",
       effectiveDate: new Date(),
@@ -564,7 +574,7 @@ void (async () => {
     {
       id: "course-version-finance-onboarding-v1",
       courseId: "course-finance-onboarding",
-      tenantId: "tenant-acme",
+      tenantId: defaultTenantId,
       versionLabel: "v1",
       publishedBy: "admin@local.dev",
       publishedAt: new Date(),
@@ -574,7 +584,7 @@ void (async () => {
     {
       id: "course-version-security-awareness-v1",
       courseId: "course-security-awareness",
-      tenantId: "tenant-acme",
+      tenantId: defaultTenantId,
       versionLabel: "v1",
       publishedBy: "admin@local.dev",
       publishedAt: new Date(),
@@ -585,7 +595,7 @@ void (async () => {
   const acknowledgementRecords: AcknowledgementRecord[] = [
     {
       id: "ack-finance-controls-user-fin-1",
-      tenantId: "tenant-acme",
+      tenantId: defaultTenantId,
       userId: "user-fin-1",
       subjectType: "policy",
       subjectId: "policy-finance-controls",
@@ -600,7 +610,7 @@ void (async () => {
   const complianceRequirements: ComplianceRequirement[] = [
     {
       id: "req-security-awareness",
-      tenantId: "tenant-acme",
+      tenantId: defaultTenantId,
       requirementType: "policy",
       requirementId: "policy-security-awareness",
       appliesToRoles: ["Finance Analyst"],
@@ -613,7 +623,7 @@ void (async () => {
     },
     {
       id: "req-finance-onboarding",
-      tenantId: "tenant-acme",
+      tenantId: defaultTenantId,
       requirementType: "course",
       requirementId: "course-finance-onboarding",
       appliesToRoles: ["Finance Analyst"],
@@ -645,7 +655,7 @@ void (async () => {
   knowledgeIndexServiceV2.indexCourses(courses);
   knowledgeIndexServiceV2.indexPolicies(policies);
   knowledgeIndexServiceV2.indexDocuments(sharePointDocuments);
-  complianceConfigServiceV2.upsertConfig("tenant-acme", {
+  complianceConfigServiceV2.upsertConfig(defaultTenantId, {
     acknowledgementRequiredDefault: true,
     signatureRequiredDefault: false,
     hrOverrideEnabled: true,
@@ -690,14 +700,4 @@ export const repositories = {
   roleProfileRepository,
   onboardingPathRepository
 };
-
-
-
-
-
-
-
-
-
-
 

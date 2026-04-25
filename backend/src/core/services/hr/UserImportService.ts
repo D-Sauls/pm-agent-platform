@@ -16,6 +16,7 @@ import type { ImportValidationService } from "./ImportValidationService.js";
 import type { RoleAssignmentService } from "./RoleAssignmentService.js";
 import type { SpreadsheetParserService } from "./SpreadsheetParserService.js";
 import type { UserProvisioningService } from "./UserProvisioningService.js";
+import type { ActivationDeliveryService } from "./ActivationDeliveryService.js";
 
 export interface CreateImportJobInput {
   tenantId: string;
@@ -34,6 +35,7 @@ export class UserImportService {
     private readonly mappingService: ImportMappingService,
     private readonly validationService: ImportValidationService,
     private readonly provisioningService: UserProvisioningService,
+    private readonly activationDeliveryService: ActivationDeliveryService,
     private readonly roleAssignmentService: RoleAssignmentService,
     private readonly auditService: ImportAuditService
   ) {}
@@ -163,6 +165,7 @@ export class UserImportService {
     const provisionedUsers = [];
     const failedRows: UserImportRow[] = [];
     const assignmentOutcomes = [];
+    const activationDeliveries: NonNullable<ImportProcessingSummary["activationDeliveries"]> = [];
     const updatedRows: UserImportRow[] = [];
 
     for (const row of rows) {
@@ -173,14 +176,18 @@ export class UserImportService {
         continue;
       }
       try {
-        const { user } = this.provisioningService.provision(tenantId, row, config);
+        const { user, activationRecord, oneTimeSecret } = this.provisioningService.provision(tenantId, row, config);
         const outcome = await this.roleAssignmentService.assign(user);
+        const delivery = await this.activationDeliveryService.deliver({ user, activationRecord, oneTimeSecret });
         provisionedUsers.push(user);
         assignmentOutcomes.push(outcome);
+        activationDeliveries.push({ userId: user.id, ...delivery });
         updatedRows.push({ ...row, provisioningStatus: "provisioned", createdUserId: user.id });
         this.auditService.record(tenantId, "hr_import.row.provisioned", jobId, {
           rowNumber: row.rowNumber,
-          userId: user.id
+          userId: user.id,
+          activationDeliveryStatus: delivery.status,
+          activationDeliveryChannel: delivery.channel
         });
       } catch (error) {
         const failed = {
@@ -212,7 +219,7 @@ export class UserImportService {
       successfulRows: completedJob.successfulRows,
       failedRows: completedJob.failedRows
     });
-    return { job: completedJob, provisionedUsers, failedRows, assignmentOutcomes };
+    return { job: completedJob, provisionedUsers, failedRows, assignmentOutcomes, activationDeliveries };
   }
 }
 

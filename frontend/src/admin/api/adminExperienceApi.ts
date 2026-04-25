@@ -1,6 +1,7 @@
 import { getAdminJson, patchAdminJson, postAdminJson } from "../../api/adminClient";
+import { defaultTenantId } from "../../config/tenantConfig.js";
 
-export const ADMIN_TENANT_ID = "tenant-acme";
+export const ADMIN_TENANT_ID = defaultTenantId();
 
 export type AdminComplianceStatus = "compliant" | "pending" | "overdue" | "non_compliant";
 export type AdminTone = "neutral" | "success" | "warning" | "danger";
@@ -123,8 +124,15 @@ export interface HrImportPreviewResponse {
 }
 
 function withTenant(path: string) {
+  if (!ADMIN_TENANT_ID) {
+    return path;
+  }
   const separator = path.includes("?") ? "&" : "?";
   return `${path}${separator}tenantId=${encodeURIComponent(ADMIN_TENANT_ID)}`;
+}
+
+function tenantBody<T extends Record<string, unknown>>(body: T): T & { tenantId?: string } {
+  return ADMIN_TENANT_ID ? { ...body, tenantId: ADMIN_TENANT_ID } : body;
 }
 
 function formatDate(value: string | null | undefined) {
@@ -163,8 +171,7 @@ export async function loadAdminEmployeeDetail(employeeId: string) {
 
 export async function createAdminOverride(employeeId: string, body: { subjectType: "policy" | "course" | "lesson"; subjectId: string; subjectVersionId?: string | null; reason: string }) {
   return postAdminJson<AdminEmployeeDetailResponse>(`/experience/employees/${employeeId}/overrides`, {
-    ...body,
-    tenantId: ADMIN_TENANT_ID
+    ...tenantBody(body)
   });
 }
 
@@ -174,16 +181,14 @@ export async function loadAdminContent() {
 
 export async function publishPolicyVersion(policyId: string, versionLabel: string) {
   return postAdminJson<AdminContentResponse>(`/experience/policies/${policyId}/versions`, {
-    tenantId: ADMIN_TENANT_ID,
-    versionLabel,
+    ...tenantBody({ versionLabel }),
     changeSummary: "Published from admin content management."
   });
 }
 
 export async function publishCourseVersion(courseId: string, versionLabel: string) {
   return postAdminJson<AdminContentResponse>(`/experience/courses/${courseId}/versions`, {
-    tenantId: ADMIN_TENANT_ID,
-    versionLabel,
+    ...tenantBody({ versionLabel }),
     changeSummary: "Published from admin content management."
   });
 }
@@ -194,8 +199,7 @@ export async function loadTenantSettings() {
 
 export async function saveTenantSettings(settings: Partial<AdminTenantSettings>) {
   return patchAdminJson<AdminTenantSettings>("/experience/settings", {
-    ...settings,
-    tenantId: ADMIN_TENANT_ID
+    ...tenantBody(settings as Record<string, unknown>)
   });
 }
 
@@ -204,17 +208,17 @@ export async function listHrImportJobs() {
 }
 
 export async function loadHrImportPreview(jobId: string) {
-  return postAdminJson<HrImportPreviewResponse>(`/hr-import/jobs/${jobId}/preview`, { tenantId: ADMIN_TENANT_ID });
+  return postAdminJson<HrImportPreviewResponse>(`/hr-import/jobs/${jobId}/preview`, tenantBody({}));
 }
 
 export async function processHrImportJob(jobId: string) {
-  return postAdminJson<HrImportPreviewResponse & { provisionedUsers?: unknown[]; failedRows?: HrImportRow[] }>(`/hr-import/jobs/${jobId}/process`, { tenantId: ADMIN_TENANT_ID });
+  return postAdminJson<HrImportPreviewResponse & { provisionedUsers?: unknown[]; failedRows?: HrImportRow[] }>(`/hr-import/jobs/${jobId}/process`, tenantBody({}));
 }
 
 export async function uploadHrImportFile(file: File) {
   const fileContentBase64 = await fileToBase64(file);
   return postAdminJson<HrImportPreviewResponse>("/hr-import/jobs", {
-    tenantId: ADMIN_TENANT_ID,
+    ...tenantBody({}),
     fileName: file.name,
     fileType: file.name.toLowerCase().endsWith(".xlsx") ? "xlsx" : "csv",
     fileContentBase64

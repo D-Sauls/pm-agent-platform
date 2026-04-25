@@ -8,4 +8,11 @@ logs
 *.log
 .vscode
 backend/data/hr-import-store.json
+backend/data/admin-tenant-store.json
+backend/data/compliance-config-store.json
 backend/data/onboarding-paths.json
+backend/data/tenant-config-store.json
+data/admin-tenant-store.json
+data/compliance-config-store.json
+data/hr-import-store.json
+data/tenant-config-store.json

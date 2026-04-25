@@ -1,17 +1,18 @@
+import { env } from "../config/env.js";
 import type { ConnectorHealth } from "../models/ConnectorHealth.js";
 
 // Provides operational connector health snapshots for admin monitoring.
 export class ConnectorHealthService {
   private healthRows: ConnectorHealth[] = [
     {
-      tenantId: "tenant-acme",
+      tenantId: env.defaultTenantId,
       connectorName: "sharepoint",
       status: "healthy",
       lastSyncTime: new Date().toISOString(),
       lastSuccessfulResponseTime: 420
     },
     {
-      tenantId: "tenant-beta",
+      tenantId: env.secondaryTenantId,
       connectorName: "microsoft-graph",
       status: "failed",
       lastSyncTime: new Date(Date.now() - 3600_000).toISOString(),

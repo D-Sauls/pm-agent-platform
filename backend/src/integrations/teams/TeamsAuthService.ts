@@ -1,3 +1,4 @@
+import { env } from "../../config/env.js";
 import type { TeamsActivity, TeamsUserContext } from "./types.js";
 
 export class TeamsAuthService {
@@ -7,7 +8,7 @@ export class TeamsAuthService {
     this.tenantMap = this.parseMap(tenantMapFromEnv ?? process.env.TEAMS_TENANT_MAP);
   }
 
-  resolve(activity: TeamsActivity, fallbackTenantId = "tenant-acme"): TeamsUserContext {
+  resolve(activity: TeamsActivity, fallbackTenantId = env.defaultTenantId): TeamsUserContext {
     const teamsTenantId = activity.channelData?.tenant?.id ?? null;
     const teamsUserId = activity.from?.id ?? "unknown-teams-user";
     const mappedTenant = teamsTenantId ? this.tenantMap[teamsTenantId] : undefined;

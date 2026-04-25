@@ -1,16 +1,20 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { resolveAppSurface } from "../dist/surface.js";
-import { getAssistantDemoResult, normalizeAssistantMessage } from "../dist/assistantDemoData.js";
-import { resolveTenantBranding } from "../dist/pwa/branding.js";
-import { buildApiUrl, withBasePath } from "../dist/pwa/runtime.js";
-import { buildOfflineManifest, resolveOfflineAvailability, syncAssignedDownloads } from "../dist/pwa/workspaceHelpers.js";
-import {
+
+process.env.VITE_DEFAULT_TENANT_ID ??= "tenant-acme";
+process.env.VITE_SECONDARY_TENANT_ID ??= "tenant-beta";
+
+const { resolveAppSurface } = await import("../dist/surface.js");
+const { getAssistantDemoResult, normalizeAssistantMessage } = await import("../dist/assistantDemoData.js");
+const { resolveTenantBranding } = await import("../dist/pwa/branding.js");
+const { buildApiUrl, withBasePath } = await import("../dist/pwa/runtime.js");
+const { buildOfflineManifest, resolveOfflineAvailability, syncAssignedDownloads } = await import("../dist/pwa/workspaceHelpers.js");
+const {
   clearEmployeeSession,
   loadEmployeeSession,
   saveEmployeeSession,
   toEmployeeSessionAccess
-} from "../dist/session/employeeSession.js";
+} = await import("../dist/session/employeeSession.js");
 
 assert.equal(resolveAppSurface("/admin"), "admin");
 assert.equal(resolveAppSurface("/teams"), "teams");

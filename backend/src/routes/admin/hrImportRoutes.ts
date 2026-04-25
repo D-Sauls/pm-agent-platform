@@ -1,13 +1,18 @@
 import type { Request } from "express";
 import { Router } from "express";
 import { z } from "zod";
-import { userImportServiceV2, userProvisioningServiceV2 } from "../../core/container.js";
+import {
+  activationDeliveryServiceV2,
+  tenantServiceV2,
+  userImportServiceV2,
+  userProvisioningServiceV2
+} from "../../core/container.js";
 import { defaultProvisioningConfig, type HrImportFileType } from "../../core/models/hrImportModels.js";
 import { requireAdminRole } from "../../middleware/AdminRoleMiddleware.js";
 import { adminAuditService } from "../../context/platformContext.js";
 
 const bodySchema = z.object({
-  tenantId: z.string().min(1),
+  tenantId: z.string().min(1).optional(),
   fileName: z.string().min(1),
   fileType: z.enum(["csv", "xlsx"]).optional(),
   fileContentBase64: z.string().min(1),
@@ -15,6 +20,19 @@ const bodySchema = z.object({
   config: z.record(z.unknown()).optional()
 });
 const maxImportBytes = 5 * 1024 * 1024;
+
+async function resolveTenantId(tenantId?: string): Promise<string> {
+  if (tenantId) {
+    await tenantServiceV2.getTenantById(tenantId);
+    return tenantId;
+  }
+  const tenants = await tenantServiceV2.listTenants();
+  const defaultTenant = tenants.find((tenant) => tenant.status === "active") ?? tenants[0];
+  if (!defaultTenant) {
+    throw new Error("No tenant is available for HR import.");
+  }
+  return defaultTenant.tenantId;
+}
 
 function inferFileType(fileName: string, explicit?: string): HrImportFileType {
   const type = explicit ?? fileName.split(".").pop()?.toLowerCase();
@@ -54,7 +72,7 @@ async function parseJobRequest(req: Request) {
     if (!file?.data || !file.fileName) throw new Error("file is required.");
     if (file.data.byteLength > maxImportBytes) throw new Error("HR import file exceeds 5MB limit.");
     return {
-      tenantId: fields.tenantId?.value ?? "",
+      tenantId: fields.tenantId?.value,
       fileName: fields.fileName?.value ?? file.fileName,
       fileType: inferFileType(fields.fileName?.value ?? file.fileName, fields.fileType?.value),
       fileContent: file.data,
@@ -89,11 +107,13 @@ adminHrImportRoutes.post(
   async (req, res, next) => {
     try {
       const input = await parseJobRequest(req);
+      const tenantId = await resolveTenantId(input.tenantId);
       const result = await userImportServiceV2.createJob({
         ...input,
+        tenantId,
         uploadedBy: req.adminUser?.email ?? "unknown-admin"
       });
-      adminAuditService.record(req.adminUser!, "hr_import.job.create", input.tenantId, {
+      adminAuditService.record(req.adminUser!, "hr_import.job.create", tenantId, {
         jobId: result.job.id,
         fileName: result.job.fileName
       });
@@ -107,40 +127,62 @@ adminHrImportRoutes.post(
 adminHrImportRoutes.get(
   "/jobs",
   requireAdminRole(["superadmin", "supportadmin", "readonlyadmin"]),
-  (req, res) => {
-    const tenantId = String(req.query.tenantId ?? "");
-    res.json({ jobs: userImportServiceV2.listJobs(tenantId) });
+  async (req, res, next) => {
+    try {
+      const tenantId = await resolveTenantId(typeof req.query.tenantId === "string" ? req.query.tenantId : undefined);
+      res.json({ jobs: userImportServiceV2.listJobs(tenantId) });
+    } catch (error) {
+      next(error);
+    }
   }
 );
 
 adminHrImportRoutes.get(
   "/jobs/:jobId",
   requireAdminRole(["superadmin", "supportadmin", "readonlyadmin"]),
-  (req, res) => {
-    const tenantId = String(req.query.tenantId ?? "");
-    const job = userImportServiceV2.getJob(tenantId, req.params.jobId);
-    if (!job) return res.status(404).json({ code: "NOT_FOUND", message: "Import job not found" });
-    return res.json(job);
+  async (req, res, next) => {
+    try {
+      const tenantId = await resolveTenantId(typeof req.query.tenantId === "string" ? req.query.tenantId : undefined);
+      const job = userImportServiceV2.getJob(tenantId, req.params.jobId);
+      if (!job) return res.status(404).json({ code: "NOT_FOUND", message: "Import job not found" });
+      return res.json(job);
+    } catch (error) {
+      return next(error);
+    }
   }
 );
 
 adminHrImportRoutes.get(
   "/jobs/:jobId/rows",
   requireAdminRole(["superadmin", "supportadmin", "readonlyadmin"]),
-  (req, res) => {
-    const tenantId = String(req.query.tenantId ?? "");
-    res.json({ rows: userImportServiceV2.listRows(tenantId, req.params.jobId) });
+  async (req, res, next) => {
+    try {
+      const tenantId = await resolveTenantId(typeof req.query.tenantId === "string" ? req.query.tenantId : undefined);
+      res.json({ rows: userImportServiceV2.listRows(tenantId, req.params.jobId) });
+    } catch (error) {
+      next(error);
+    }
   }
 );
 
 adminHrImportRoutes.post(
   "/jobs/:jobId/preview",
   requireAdminRole(["superadmin", "supportadmin", "readonlyadmin"]),
-  (req, res) => {
-    const tenantId = String(req.body?.tenantId ?? req.query.tenantId ?? "");
-    const preview = userImportServiceV2.preview(tenantId, req.params.jobId);
-    if (!preview) return res.status(404).json({ code: "NOT_FOUND", message: "Import job not found" });
-    return res.json(preview);
+  async (req, res, next) => {
+    try {
+      const tenantId = await resolveTenantId(
+        typeof req.body?.tenantId === "string"
+          ? req.body.tenantId
+          : typeof req.query.tenantId === "string"
+            ? req.query.tenantId
+            : undefined
+      );
+      const preview = userImportServiceV2.preview(tenantId, req.params.jobId);
+      if (!preview) return res.status(404).json({ code: "NOT_FOUND", message: "Import job not found" });
+      return res.json(preview);
+    } catch (error) {
+      return next(error);
+    }
   }
 );
 
@@ -149,7 +191,7 @@ adminHrImportRoutes.post(
   requireAdminRole(["superadmin", "supportadmin"]),
   async (req, res, next) => {
     try {
-      const tenantId = String(req.body?.tenantId ?? "");
+      const tenantId = await resolveTenantId(typeof req.body?.tenantId === "string" ? req.body.tenantId : undefined);
       const summary = await userImportServiceV2.process(tenantId, req.params.jobId, req.body?.config);
       if (!summary) return res.status(404).json({ code: "NOT_FOUND", message: "Import job not found" });
       adminAuditService.record(req.adminUser!, "hr_import.job.process", tenantId, {
@@ -167,18 +209,21 @@ adminHrImportRoutes.post(
 adminHrImportRoutes.post(
   "/users/:userId/send-activation",
   requireAdminRole(["superadmin", "supportadmin"]),
-  (req, res, next) => {
+  async (req, res, next) => {
     try {
-      const tenantId = String(req.body?.tenantId ?? "");
-      const record = userProvisioningServiceV2.resendActivation(
+      const tenantId = await resolveTenantId(typeof req.body?.tenantId === "string" ? req.body.tenantId : undefined);
+      const activation = userProvisioningServiceV2.resendActivation(
         tenantId,
         req.params.userId,
         { ...defaultProvisioningConfig, ...req.body?.config }
       );
+      const delivery = await activationDeliveryServiceV2.deliver(activation);
       adminAuditService.record(req.adminUser!, "hr_import.activation.resent", tenantId, {
-        userId: req.params.userId
+        userId: req.params.userId,
+        activationDeliveryStatus: delivery.status,
+        activationDeliveryChannel: delivery.channel
       });
-      res.json({ activationRecord: record });
+      res.json({ activationRecord: activation.activationRecord, delivery });
     } catch (error) {
       next(error);
     }

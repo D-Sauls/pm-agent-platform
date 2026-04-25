@@ -53,7 +53,21 @@ export function loadEnvConfig(source: EnvSource = process.env) {
     rateLimitWindowMs: readNumber(source.RATE_LIMIT_WINDOW_MS, 60_000),
     rateLimitWorkflowMax: readNumber(source.RATE_LIMIT_WORKFLOW_MAX, 60),
     rateLimitAgentMax: readNumber(source.RATE_LIMIT_AGENT_MAX, 60),
-    rateLimitAdminMax: readNumber(source.RATE_LIMIT_ADMIN_MAX, 120)
+    rateLimitAdminMax: readNumber(source.RATE_LIMIT_ADMIN_MAX, 120),
+    platformDataDir: source.PLATFORM_DATA_DIR ?? source.DATA_DIR ?? "data",
+    defaultTenantId: source.DEFAULT_TENANT_ID ?? source.VITE_DEFAULT_TENANT_ID ?? "tenant-acme",
+    defaultTenantName: source.DEFAULT_TENANT_NAME ?? "Acme Corp",
+    defaultTenantRegion: source.DEFAULT_TENANT_REGION ?? "us",
+    secondaryTenantId: source.SECONDARY_TENANT_ID ?? "tenant-beta",
+    secondaryTenantName: source.SECONDARY_TENANT_NAME ?? "Beta Industries",
+    secondaryTenantRegion: source.SECONDARY_TENANT_REGION ?? "eu",
+    activationBaseUrl: source.ACTIVATION_BASE_URL ?? source.FRONTEND_BASE_URL ?? "http://localhost:5173",
+    activationDeliveryMode: source.ACTIVATION_DELIVERY_MODE ?? "log",
+    activationDeliveryWebhookUrl: source.ACTIVATION_DELIVERY_WEBHOOK_URL ?? "",
+    activationSenderEmail: source.ACTIVATION_SENDER_EMAIL ?? "no-reply@localhost",
+    activationSenderSms: source.ACTIVATION_SENDER_SMS ?? "",
+    activationDeliveryPreview:
+      source.ACTIVATION_DELIVERY_PREVIEW === "true" || appEnv === "local"
   };
 }
 

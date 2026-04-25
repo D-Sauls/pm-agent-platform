@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+import { env } from "../config/env.js";
 import type { Tenant } from "../models/Tenant.js";
 
 export interface CreateTenantInput {
@@ -11,8 +14,26 @@ export interface CreateTenantInput {
 export class TenantService {
   private tenants = new Map<string, Tenant>();
 
-  constructor() {
-    this.seedDefaultTenants();
+  constructor(private readonly filePath?: string) {
+    if (filePath) {
+      fs.mkdirSync(path.dirname(filePath), { recursive: true });
+      if (fs.existsSync(filePath)) {
+        const raw = fs.readFileSync(filePath, "utf8");
+        let rows: Tenant[] = [];
+        try {
+          rows = raw.trim() ? JSON.parse(raw) as Tenant[] : [];
+        } catch {
+          rows = [];
+        }
+        for (const tenant of rows) {
+          this.tenants.set(tenant.tenantId, tenant);
+        }
+      }
+    }
+    if (this.tenants.size === 0) {
+      this.seedDefaultTenants();
+      this.persist();
+    }
   }
 
   createTenant(input: CreateTenantInput): Tenant {
@@ -27,6 +48,7 @@ export class TenantService {
       connectorConfig: input.connectorConfig ?? { enabledConnectors: [] }
     };
     this.tenants.set(tenant.tenantId, tenant);
+    this.persist();
     return tenant;
   }
 
@@ -38,6 +60,7 @@ export class TenantService {
 
     const updated: Tenant = { ...existing, connectorConfig: config };
     this.tenants.set(tenantId, updated);
+    this.persist();
     return updated;
   }
 
@@ -57,6 +80,7 @@ export class TenantService {
 
     const updated: Tenant = { ...existing, licenseStatus: status };
     this.tenants.set(tenantId, updated);
+    this.persist();
     return updated;
   }
 
@@ -68,6 +92,7 @@ export class TenantService {
 
     const updated: Tenant = { ...existing, planType };
     this.tenants.set(tenantId, updated);
+    this.persist();
     return updated;
   }
 
@@ -87,6 +112,7 @@ export class TenantService {
 
     const updated: Tenant = { ...existing, featureFlags: flags };
     this.tenants.set(tenantId, updated);
+    this.persist();
     return updated;
   }
 
@@ -98,13 +124,23 @@ export class TenantService {
 
     const updated: Tenant = { ...existing, promptVersion };
     this.tenants.set(tenantId, updated);
+    this.persist();
     return updated;
+  }
+
+  private persist(): void {
+    if (!this.filePath) {
+      return;
+    }
+    const tempPath = `${this.filePath}.${process.pid}.${process.hrtime.bigint()}.tmp`;
+    fs.writeFileSync(tempPath, JSON.stringify(this.listTenants(), null, 2), "utf8");
+    fs.renameSync(tempPath, this.filePath);
   }
 
   private seedDefaultTenants(): void {
     this.createTenant({
-      tenantId: "tenant-acme",
-      organizationName: "Acme Corp",
+      tenantId: env.defaultTenantId,
+      organizationName: env.defaultTenantName,
       planType: "enterprise",
       connectorConfig: {
         primaryConnector: "sharepoint",
@@ -112,14 +148,14 @@ export class TenantService {
       }
     });
     this.createTenant({
-      tenantId: "tenant-beta",
-      organizationName: "Beta Industries",
+      tenantId: env.secondaryTenantId,
+      organizationName: env.secondaryTenantName,
       planType: "starter",
       connectorConfig: {
         primaryConnector: "sharepoint",
         enabledConnectors: ["microsoft-graph", "sharepoint"]
       }
     });
-    this.setLicenseStatus("tenant-beta", "inactive");
+    this.setLicenseStatus(env.secondaryTenantId, "inactive");
   }
 }

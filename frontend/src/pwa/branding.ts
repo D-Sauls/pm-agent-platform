@@ -1,20 +1,29 @@
 import type { TenantBranding } from "./types";
+import { defaultTenantId, secondaryTenantId } from "../config/tenantConfig.js";
 
 const brandPresets: Record<string, TenantBranding> = {
-  "tenant-acme": {
+  ...(defaultTenantId()
+    ? {
+        [defaultTenantId()]: {
     appName: "Acme Learning Hub",
     logoText: "AC",
     primaryColor: "#0f4c5c",
     accentColor: "#e36414",
     welcomeMessage: "Stay current on onboarding, policy updates, and mandatory training."
-  },
-  "tenant-beta": {
+        }
+      }
+    : {}),
+  ...(secondaryTenantId()
+    ? {
+        [secondaryTenantId()]: {
     appName: "Beta Knowledge Cloud",
     logoText: "BI",
     primaryColor: "#1b4332",
     accentColor: "#f4a261",
     welcomeMessage: "Complete required learning and access the latest knowledge in one place."
-  }
+        }
+      }
+    : {})
 };
 
 export function resolveTenantBranding(tenantId: string, organizationName?: string): TenantBranding {

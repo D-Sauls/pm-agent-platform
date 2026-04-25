@@ -1,3 +1,5 @@
+import { defaultTenantId } from "../config/tenantConfig.js";
+
 export interface FrontendRuntimeConfig {
   tenantId?: string;
   basePath?: string;
@@ -79,8 +81,12 @@ function inferTenantFromHost(hostname: string): string | undefined {
 }
 
 function resolveTenantId(hostname: string): string {
-  const configured = window.__ONBOARDING_CONFIG__?.tenantId ?? readMeta("tenant-id") ?? inferTenantFromHost(hostname);
-  return configured || "tenant-acme";
+  const configured =
+    window.__ONBOARDING_CONFIG__?.tenantId ??
+    readMeta("tenant-id") ??
+    inferTenantFromHost(hostname) ??
+    defaultTenantId();
+  return configured || "";
 }
 
 export function resolveTenantRuntime(locationLike: Pick<Location, "hostname" | "pathname"> = window.location): TenantRuntime {

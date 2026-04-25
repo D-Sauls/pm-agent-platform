@@ -128,6 +128,17 @@ export interface ImportProcessingSummary {
   provisionedUsers: ProvisionedUser[];
   failedRows: UserImportRow[];
   assignmentOutcomes: RoleAssignmentOutcome[];
+  activationDeliveries?: Array<{
+    userId: string;
+    status: string;
+    channel: string;
+    destination?: string | null;
+    message: string;
+    preview?: {
+      activationUrl?: string;
+      temporaryPassword?: string;
+    };
+  }>;
 }
 
 export interface HrImportState {

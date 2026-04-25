@@ -87,14 +87,18 @@ export class UserProvisioningService {
     return { user, activationRecord, oneTimeSecret };
   }
 
-  resendActivation(tenantId: string, userId: string, config: ProvisioningConfig): ActivationRecord {
+  resendActivation(tenantId: string, userId: string, config: ProvisioningConfig): {
+    user: ProvisionedUser;
+    activationRecord: ActivationRecord;
+    oneTimeSecret: string;
+  } {
     const existingUser = this.repository.listUsers(tenantId).find((user) => user.id === userId);
     if (!existingUser) {
       throw new Error(`User ${userId} not found`);
     }
     const now = new Date();
     const token = randomBytes(24).toString("base64url");
-    return this.repository.createActivationRecord({
+    const activationRecord = this.repository.createActivationRecord({
       id: randomUUID(),
       tenantId,
       userId,
@@ -105,6 +109,7 @@ export class UserProvisioningService {
       activatedAt: null,
       createdAt: now
     });
+    return { user: existingUser, activationRecord, oneTimeSecret: token };
   }
 
   completeActivation(input: {

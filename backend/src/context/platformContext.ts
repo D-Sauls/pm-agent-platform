@@ -1,3 +1,5 @@
+import path from "node:path";
+import { env } from "../config/env.js";
 import { AdminAuthService } from "../services/AdminAuthService.js";
 import { AdminAuditService } from "../services/AdminAuditService.js";
 import { AdminDashboardService } from "../services/AdminDashboardService.js";
@@ -10,7 +12,11 @@ import { TenantService } from "../services/TenantService.js";
 import { TenantProvisioningService } from "../services/TenantProvisioningService.js";
 import { UsageLogService } from "../services/UsageLogService.js";
 
-export const tenantService = new TenantService();
+function dataPath(fileName: string): string {
+  return path.resolve(process.cwd(), env.platformDataDir, fileName);
+}
+
+export const tenantService = new TenantService(dataPath("admin-tenant-store.json"));
 export const licenseService = new LicenseService();
 export const usageLogService = new UsageLogService();
 export const adminAuthService = new AdminAuthService();

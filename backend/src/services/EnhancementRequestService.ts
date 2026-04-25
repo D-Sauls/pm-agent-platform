@@ -1,3 +1,4 @@
+import { env } from "../config/env.js";
 import type {
   EnhancementRequest,
   EnhancementStatus
@@ -13,7 +14,7 @@ export class EnhancementRequestService {
   private requests: EnhancementRequest[] = [
     {
       id: "enh-1001",
-      tenantId: "tenant-acme",
+      tenantId: env.defaultTenantId,
       submittedBy: "pm@acme.com",
       title: "Add earned value trend chart",
       description: "Need EVM trend in weekly report dashboard.",
@@ -26,7 +27,7 @@ export class EnhancementRequestService {
     },
     {
       id: "enh-1002",
-      tenantId: "tenant-beta",
+      tenantId: env.secondaryTenantId,
       submittedBy: "ops@beta.io",
       title: "Export usage logs to CSV",
       description: "Support team needs downloadable usage logs by tenant.",
