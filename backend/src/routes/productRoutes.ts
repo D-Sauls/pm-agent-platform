@@ -454,9 +454,6 @@ productRoutes.post("/auth/login", async (req, res, next) => {
   }
 });
 
-productRoutes.use(authContextMiddleware);
-productRoutes.use(requestLoggingMiddleware(usageLogServiceV2));
-
 const retiredPmRoutes = [
   "/projects/:projectId/context",
   "/workflows/weekly-report",
@@ -483,6 +480,9 @@ for (const route of retiredPmRoutes) {
     });
   });
 }
+
+productRoutes.use(authContextMiddleware);
+productRoutes.use(requestLoggingMiddleware(usageLogServiceV2));
 
 productRoutes.get("/tenants/:tenantId/context", resolveTenant, validateLicense, async (req, res, next) => {
   try {

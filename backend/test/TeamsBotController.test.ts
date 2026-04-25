@@ -9,8 +9,8 @@ class MockMessageRouter {
   async route(): Promise<TeamsMessageRouteResult> {
     return {
       tenantId: "tenant-acme",
-      projectId: "project-alpha",
-      message: "generate weekly report"
+      message: "What should I do next for onboarding?",
+      metadata: { source: "teams" }
     };
   }
 }
@@ -18,43 +18,25 @@ class MockMessageRouter {
 class MockAgentExecutor implements AgentExecutor {
   goalExecuted = false;
 
-  async execute() {
-    return {
-      workflowId: "weekly_report",
-      confidenceScore: 0.95,
-      connectorUsed: "monday",
-      result: {
-        workflowId: "weekly_report",
-        resultType: "report",
-        generatedAt: new Date(),
-        confidenceScore: 0.95,
-        warnings: [],
-        data: {
-          recommendations: ["Follow up on dependencies"]
-        }
-      } as any
-    };
-  }
-
   async goalExecute() {
     this.goalExecuted = true;
     return {
       planId: "plan-1",
-      goalType: "executive_readiness",
+      goalType: "onboarding_guidance",
       plannerConfidence: 0.9,
       stopReason: "completed",
       stepExecutions: [],
       response: {
-        goalSummary: "Executive summary request",
-        workflowsExecuted: ["project_summary", "forecast"],
-        synthesizedSummary: "Project is amber with forecasted delivery risk.",
-        keyFindings: ["Delivery risk is amber"],
-        recommendedActions: ["Escalate blocker"],
+        goalSummary: "Onboarding next step request",
+        workflowsExecuted: ["next_training_step", "compliance_audit"],
+        synthesizedSummary: "Complete the next assigned course and acknowledge the pending policy.",
+        keyFindings: ["Kitchen Hygiene Lesson 3 is pending"],
+        recommendedActions: ["Open the assigned course"],
         assumptionsMade: [],
         warnings: [],
         generatedAt: new Date()
       }
-    };
+    } as any;
   }
 }
 
@@ -83,28 +65,31 @@ function mockRes() {
   };
 }
 
-test("TeamsBotController processes message and returns adaptive card response", async () => {
+test("TeamsBotController processes onboarding assistant message and returns adaptive card response", async () => {
+  const executor = new MockAgentExecutor();
   const controller = new TeamsBotController(
     new TeamsAuthService(),
     new MockMessageRouter() as any,
-    new MockAgentExecutor(),
+    executor,
     new AdaptiveCardRenderer(),
     new MockUsageLogService() as any
   );
   const req = mockReq({
     type: "message",
-    text: "Generate weekly report",
+    text: "What should I do next for onboarding?",
     from: { id: "teams-user-1" },
     channelData: { tenant: { id: "teams-tenant-1" } }
   });
   const res = mockRes();
 
   await controller.handleMessage(req as any, res as any);
+
   assert.equal(res.statusCode, 200);
+  assert.equal(executor.goalExecuted, true);
   assert.ok(Array.isArray(res.payload.attachments));
 });
 
-test("TeamsBotController routes broad goals to agentic goal execution when available", async () => {
+test("TeamsBotController keeps Teams assistant responses in onboarding/compliance context", async () => {
   const executor = new MockAgentExecutor();
   const controller = new TeamsBotController(
     new TeamsAuthService(),
@@ -112,8 +97,8 @@ test("TeamsBotController routes broad goals to agentic goal execution when avail
       async route(): Promise<TeamsMessageRouteResult> {
         return {
           tenantId: "tenant-acme",
-          projectId: "project-alpha",
-          message: "Give me an executive summary with forecast and risks"
+          message: "What am I missing for compliance?",
+          metadata: { source: "teams" }
         };
       }
     } as any,
@@ -123,13 +108,14 @@ test("TeamsBotController routes broad goals to agentic goal execution when avail
   );
   const req = mockReq({
     type: "message",
-    text: "Give me an executive summary with forecast and risks",
+    text: "What am I missing for compliance?",
     from: { id: "teams-user-1" },
     channelData: { tenant: { id: "teams-tenant-1" } }
   });
   const res = mockRes();
 
   await controller.handleMessage(req as any, res as any);
+
   assert.equal(res.statusCode, 200);
   assert.equal(executor.goalExecuted, true);
 });

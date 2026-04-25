@@ -3,17 +3,15 @@ import test from "node:test";
 import { ResultSynthesisService } from "../src/core/services/agentic/ResultSynthesisService.js";
 import type { WorkflowResult } from "../src/core/services/workflows/baseWorkflow.js";
 
-test("ResultSynthesisService combines workflow outputs into coherent response", () => {
+test("ResultSynthesisService combines onboarding and compliance workflow outputs", () => {
   const service = new ResultSynthesisService();
   const results: WorkflowResult[] = [
     {
-      workflowId: "project_summary",
-      resultType: "project_summary",
+      workflowId: "next_training_step",
+      resultType: "next_training_step",
       data: {
-        projectOverview: "Project Alpha is at risk.",
-        keyAchievements: ["Completed sprint planning"],
-        recommendedFocus: ["Escalate integration blocker"],
-        assumptionsMade: ["Status data is current"],
+        summary: "Complete Kitchen Hygiene Lesson 3 next.",
+        nextActions: ["Open the assigned course", "Complete the pending lesson"],
         warnings: []
       } as any,
       generatedAt: new Date(),
@@ -21,12 +19,12 @@ test("ResultSynthesisService combines workflow outputs into coherent response", 
       warnings: []
     },
     {
-      workflowId: "forecast",
-      resultType: "forecast",
+      workflowId: "compliance_audit",
+      resultType: "compliance_audit",
       data: {
-        forecastExplanation: "Delivery risk is amber due to overdue tasks.",
-        recommendedActions: ["Rebaseline milestone dates"],
-        assumptionsMade: ["Capacity remains stable"],
+        overallStatus: "pending",
+        recommendedActions: ["Acknowledge Food Safety Policy v4"],
+        assumptionsMade: ["Current assignments are in scope"],
         warnings: []
       } as any,
       generatedAt: new Date(),
@@ -35,13 +33,10 @@ test("ResultSynthesisService combines workflow outputs into coherent response", 
     }
   ];
 
-  const synthesized = service.synthesize(
-    "Give me an executive summary with forecast and risks",
-    results,
-    []
-  );
+  const synthesized = service.synthesize("What should I do next for onboarding and compliance?", results, []);
 
-  assert.equal(synthesized.workflowsExecuted.length, 2);
-  assert.ok(synthesized.synthesizedSummary.length > 0);
-  assert.ok(synthesized.recommendedActions.includes("Rebaseline milestone dates"));
+  assert.deepEqual(synthesized.workflowsExecuted, ["next_training_step", "compliance_audit"]);
+  assert.ok(synthesized.synthesizedSummary.includes("next_training_step"));
+  assert.ok(synthesized.keyFindings.includes("Complete Kitchen Hygiene Lesson 3 next."));
+  assert.ok(synthesized.recommendedActions.includes("Acknowledge Food Safety Policy v4"));
 });

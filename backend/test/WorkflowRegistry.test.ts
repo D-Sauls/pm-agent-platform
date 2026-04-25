@@ -1,14 +1,32 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { ReportingEngine } from "../src/core/services/ReportingEngine.js";
-import { WeeklyReportWorkflowV2 } from "../src/core/services/workflows/weeklyReportWorkflow.js";
+import type { BaseWorkflow, WorkflowResult } from "../src/core/services/workflows/baseWorkflow.js";
 import { WorkflowRegistry } from "../src/core/services/workflows/workflowRegistry.js";
-import { PromptEngine } from "../src/prompt/PromptEngine.js";
 
-test("WorkflowRegistry registers and retrieves workflows", () => {
+function workflow(id: BaseWorkflow["id"]): BaseWorkflow {
+  return {
+    id,
+    name: id,
+    description: id,
+    supportedInputTypes: ["text"],
+    async execute(): Promise<WorkflowResult> {
+      return {
+        workflowId: id,
+        resultType: id as WorkflowResult["resultType"],
+        data: { summary: id } as any,
+        generatedAt: new Date(),
+        confidenceScore: 0.8,
+        warnings: []
+      };
+    }
+  };
+}
+
+test("WorkflowRegistry registers and retrieves onboarding workflows", () => {
   const registry = new WorkflowRegistry();
-  registry.register(new WeeklyReportWorkflowV2(new ReportingEngine(new PromptEngine())));
-  const workflow = registry.getWorkflow("weekly_report");
-  assert.equal(workflow.id, "weekly_report");
+  registry.register(workflow("next_training_step"));
+  const registered = registry.getWorkflow("next_training_step");
+
+  assert.equal(registered.id, "next_training_step");
   assert.equal(registry.listWorkflows().length, 1);
 });

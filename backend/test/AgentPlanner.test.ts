@@ -2,63 +2,64 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { AgentPlanner } from "../src/core/services/workflows/agentPlanner.js";
 
-test("AgentPlanner maps weekly report request", () => {
+test("AgentPlanner maps onboarding next-step requests", () => {
   const planner = new AgentPlanner();
-  const result = planner.plan("generate weekly report");
-  assert.equal(result.workflowId, "weekly_report");
-  assert.ok(result.confidenceScore > 0.9);
+  const result = planner.plan("What should I do next for onboarding?");
+
+  assert.equal(result.workflowId, "next_training_step");
+  assert.ok(result.confidenceScore > 0.8);
 });
 
-test("AgentPlanner maps RAID request", () => {
+test("AgentPlanner maps course recommendation requests", () => {
   const planner = new AgentPlanner();
-  const result = planner.plan("turn these notes into risks and issues");
-  assert.equal(result.workflowId, "raid_extraction");
+  const result = planner.plan("Do I need to complete every course for my role?");
+
+  assert.equal(result.workflowId, "course_recommendation");
 });
 
-test("AgentPlanner maps meeting risk phrase to RAID extraction", () => {
+test("AgentPlanner maps compliance gap requests", () => {
   const planner = new AgentPlanner();
-  const result = planner.plan("identify risks from this meeting");
-  assert.equal(result.workflowId, "raid_extraction");
+  const result = planner.plan("What am I missing for compliance?");
+
+  assert.equal(result.workflowId, "compliance_audit");
 });
 
-test("AgentPlanner maps change-control phrase to ChangeAssessmentWorkflow", () => {
+test("AgentPlanner maps policy explanation requests", () => {
   const planner = new AgentPlanner();
-  const result = planner.plan("does this require change control");
-  assert.equal(result.workflowId, "change_assessment");
+  const result = planner.plan("Explain Food Safety Policy v4");
+
+  assert.equal(result.workflowId, "knowledge_explain");
 });
 
-test("AgentPlanner maps delivery advice phrase to DeliveryAdvisorWorkflow", () => {
+test("AgentPlanner maps role-purpose requests", () => {
   const planner = new AgentPlanner();
-  const result = planner.plan("what should I focus on next");
-  assert.equal(result.workflowId, "delivery_advisor");
+  const result = planner.plan("What is my job role and why am I doing these courses?");
+
+  assert.equal(result.workflowId, "role_knowledge_lookup");
 });
 
-test("AgentPlanner fallback maps to project summary", () => {
+test("AgentPlanner fallback stays in onboarding domain", () => {
   const planner = new AgentPlanner();
   const result = planner.plan("help");
-  assert.equal(result.workflowId, "project_summary");
+
+  assert.equal(result.workflowId, "next_training_step");
+  assert.match(result.rationale, /onboarding/i);
 });
 
-test("AgentPlanner maps executive summary phrase to ProjectSummaryWorkflow", () => {
+test("AgentPlanner does not route retired PM/time/billing/forecast requests", () => {
   const planner = new AgentPlanner();
-  const result = planner.plan("prepare a project summary for leadership");
-  assert.equal(result.workflowId, "project_summary");
-});
+  const legacyPrompts = [
+    "generate weekly report",
+    "prepare a project summary for leadership",
+    "forecast delivery risk",
+    "show weekly time report",
+    "show monthly billing summary",
+    "sync ClickUp tasks"
+  ];
 
-test("AgentPlanner maps forecast phrase to ForecastWorkflow", () => {
-  const planner = new AgentPlanner();
-  const result = planner.plan("forecast delivery risk");
-  assert.equal(result.workflowId, "forecast");
-});
-
-test("AgentPlanner maps weekly time report phrase", () => {
-  const planner = new AgentPlanner();
-  const result = planner.plan("show weekly time report");
-  assert.equal(result.workflowId, "weekly_time_report");
-});
-
-test("AgentPlanner maps monthly billing summary phrase", () => {
-  const planner = new AgentPlanner();
-  const result = planner.plan("show monthly billing summary");
-  assert.equal(result.workflowId, "monthly_billing_summary");
+  for (const prompt of legacyPrompts) {
+    const result = planner.plan(prompt);
+    assert.equal(result.workflowId, "next_training_step", prompt);
+    assert.match(result.rationale, /retired|onboarding/i, prompt);
+  }
 });

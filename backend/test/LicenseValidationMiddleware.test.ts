@@ -14,8 +14,8 @@ const activeTenant: Tenant = {
   planType: "professional",
   createdDate: new Date(),
   updatedDate: new Date(),
-  defaultPromptVersion: "weekly_report:v1",
-  enabledConnectors: ["clickup"],
+  defaultPromptVersion: "onboarding_assistant:v1",
+  enabledConnectors: ["sharepoint"],
   featureFlags: []
 };
 
