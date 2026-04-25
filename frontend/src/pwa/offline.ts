@@ -6,8 +6,10 @@ import {
   replaceDownloads,
   saveDownloads,
   saveProgressQueue
-} from "./storage";
+} from "./storage.js";
 import type { DownloadRecord, ProgressQueueItem } from "./types";
+
+const CONTENT_CACHE = "learnhub-content-v3";
 
 export function canDownloadByPolicy(policy: string): { allowed: boolean; reason?: string } {
   if (policy === "allow_anywhere" || policy === "authenticated_only") {
@@ -19,18 +21,48 @@ export function canDownloadByPolicy(policy: string): { allowed: boolean; reason?
   return { allowed: false, reason: "Offline download is restricted to approved office network ranges." };
 }
 
-export async function cacheUrlsForOffline(urls: string[]): Promise<void> {
-  if (!urls.length || !("serviceWorker" in navigator) || !navigator.serviceWorker.controller) {
-    return;
+function toAbsoluteUrl(url: string): string {
+  const origin = typeof window !== "undefined" && window.location?.origin ? window.location.origin : "http://localhost";
+  return new URL(url, origin).toString();
+}
+
+export async function cacheUrlsForOffline(urls: string[]): Promise<boolean> {
+  if (!urls.length || typeof caches === "undefined" || typeof fetch === "undefined") {
+    return false;
   }
-  navigator.serviceWorker.controller.postMessage({ type: "CACHE_URLS", urls });
+
+  try {
+    const cache = await caches.open(CONTENT_CACHE);
+    const results = await Promise.all(
+      urls.map(async (url) => {
+        const absoluteUrl = toAbsoluteUrl(url);
+        const response = await fetch(absoluteUrl, { credentials: "same-origin" });
+        if (!response.ok) {
+          return false;
+        }
+        await cache.put(absoluteUrl, response.clone());
+        return true;
+      })
+    );
+    return results.every(Boolean);
+  } catch {
+    return false;
+  }
 }
 
 export async function invalidateUrlsForOffline(urls: string[]): Promise<void> {
-  if (!urls.length || !("serviceWorker" in navigator) || !navigator.serviceWorker.controller) {
+  if (!urls.length) {
     return;
   }
-  navigator.serviceWorker.controller.postMessage({ type: "INVALIDATE_URLS", urls });
+
+  if (typeof caches !== "undefined") {
+    const cache = await caches.open(CONTENT_CACHE);
+    await Promise.all(urls.map((url) => cache.delete(toAbsoluteUrl(url))));
+  }
+
+  if (typeof navigator !== "undefined" && "serviceWorker" in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: "INVALIDATE_URLS", urls });
+  }
 }
 
 export function registerDownload(record: DownloadRecord, scope = "default"): void {
@@ -71,3 +103,5 @@ export async function flushProgressQueue(
 export function clearQueuedProgress(scope = "default"): void {
   clearProgressQueue(scope);
 }
+
+

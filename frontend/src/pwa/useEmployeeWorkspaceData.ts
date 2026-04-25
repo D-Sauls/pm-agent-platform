@@ -141,7 +141,7 @@ export function useEmployeeWorkspaceData(input: {
     onboardingRecommendation?.nextActions?.[0] ??
     "Open your assigned training to continue your onboarding path.";
   const readyDownloads = downloads.filter((item) => item.status === "ready").length;
-  const pendingDownloads = downloads.filter((item) => item.status === "pending_sync").length;
+  const pendingDownloads = downloads.filter((item) => item.status === "pending_sync" || item.status === "preparing").length;
   const assistantPrompts = useMemo(
     () =>
       uniq([
@@ -381,3 +381,4 @@ export function useEmployeeWorkspaceData(input: {
       resolvePolicyStatus(policy, acknowledgements, compliance)
   };
 }
+

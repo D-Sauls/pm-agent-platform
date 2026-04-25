@@ -253,7 +253,7 @@ export function HomeTabView(props: {
 
       <section className="detail-card detail-card--split">
         <MetricTile label="Offline access" value={`${props.readyDownloads}`} note="assigned item(s) available" compact />
-        <MetricTile label="Sync queue" value={`${props.pendingDownloads}`} note="waiting to sync" compact />
+        <MetricTile label="Pending downloads" value={`${props.pendingDownloads}`} note="waiting to cache" compact />
       </section>
     </div>
   );
@@ -346,7 +346,7 @@ export function CourseDetailView(props: {
         </div>
         <div className="progress-row">
           <strong>{Math.round(props.progressPercent)}% complete</strong>
-          <span>Keep going with the next assigned lesson</span>
+          <span>Open a lesson to continue this course</span>
         </div>
         <ProgressBar value={props.progressPercent} />
         <button type="button" className="primary-button" onClick={props.onContinue}>
@@ -428,7 +428,7 @@ export function PoliciesListView(props: {
             <div className="meta-badge-row">
               <MetaBadge tone="info">{props.versionLookup(policy)}</MetaBadge>
               <MetaBadge tone="neutral">
-                {props.effectiveDateLookup(policy) ? formatDate(props.effectiveDateLookup(policy) as string) : "Current effective date"}
+                {props.effectiveDateLookup(policy) ? formatDate(props.effectiveDateLookup(policy) as string) : "Current version"}
               </MetaBadge>
             </div>
             <div className="list-card-mobile__footer">
@@ -479,7 +479,7 @@ export function PolicyDetailView(props: {
           </div>
           <div>
             <span>Effective date</span>
-            <strong>{props.effectiveDate ? formatDate(props.effectiveDate) : "Current"}</strong>
+            <strong>{props.effectiveDate ? formatDate(props.effectiveDate) : "Current version"}</strong>
           </div>
         </div>
 
@@ -719,3 +719,4 @@ function formatDate(value: string): string {
     day: "numeric"
   });
 }
+

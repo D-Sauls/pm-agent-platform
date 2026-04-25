@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { buildApiUrl } from "./runtime";
+import { buildApiUrl } from "./runtime.js";
 import {
   cacheUrlsForOffline,
   canDownloadByPolicy,
   invalidateUrlsForOffline,
   replaceManagedDownloads
-} from "./offline";
-import { loadDownloads } from "./storage";
+} from "./offline.js";
+import { loadDownloads } from "./storage.js";
 import type {
   AcknowledgementSummary,
   ComplianceStatusItem,
@@ -18,6 +18,11 @@ import type {
   EmployeePolicy,
   PolicyVersionSummary
 } from "./types";
+
+export type OfflineAvailability = {
+  label: string;
+  tone: "neutral" | "success" | "warning" | "danger" | "info";
+};
 
 export function useOnlineStatus(): boolean {
   const [online, setOnline] = useState(navigator.onLine);
@@ -88,6 +93,20 @@ function policyFingerprint(policy: EmployeePolicy, versionLabel?: string): strin
   return `${versionLabel ?? "current"}:${policy.documentReference}`;
 }
 
+function resolveInitialDownloadStatus(
+  urls: string[],
+  permission: { allowed: boolean; reason?: string },
+  online: boolean
+): Pick<DownloadRecord, "status" | "reason"> {
+  if (!permission.allowed) {
+    return { status: "blocked", reason: permission.reason };
+  }
+  if (urls.length === 0) {
+    return { status: "online_only", reason: "No downloadable assets are attached to this item." };
+  }
+  return { status: online ? "preparing" : "pending_sync" };
+}
+
 export function buildOfflineManifest(
   courses: EmployeeCourse[],
   policies: EmployeePolicy[],
@@ -96,31 +115,59 @@ export function buildOfflineManifest(
   online: boolean
 ): DownloadRecord[] {
   const permission = canDownloadByPolicy(downloadPolicy);
-  const courseRecords: DownloadRecord[] = courses.map((course) => ({
-    id: `course:${course.id}`,
-    kind: "course",
-    title: course.title,
-    urls: course.modules.flatMap((module) =>
+  const courseRecords: DownloadRecord[] = courses.map((course) => {
+    const urls = course.modules.flatMap((module) =>
       module.lessons.map((lesson) => lesson.contentReference).filter((reference) => reference.startsWith("/"))
-    ),
-    downloadedAt: new Date().toISOString(),
-    status: permission.allowed ? (online ? "ready" : "pending_sync") : "blocked",
-    versionKey: courseFingerprint(course),
-    reason: permission.allowed ? undefined : permission.reason
-  }));
+    );
+    const downloadState = resolveInitialDownloadStatus(urls, permission, online);
+    return {
+      id: `course:${course.id}`,
+      kind: "course",
+      title: course.title,
+      urls,
+      downloadedAt: new Date().toISOString(),
+      ...downloadState,
+      versionKey: courseFingerprint(course)
+    };
+  });
 
-  const policyRecords: DownloadRecord[] = policies.map((policy) => ({
-    id: `policy:${policy.id}`,
-    kind: "policy",
-    title: policy.title,
-    urls: policy.documentReference.startsWith("/") ? [policy.documentReference] : [],
-    downloadedAt: new Date().toISOString(),
-    status: permission.allowed ? (online ? "ready" : "pending_sync") : "blocked",
-    versionKey: policyFingerprint(policy, policyVersions[policy.id]?.[0]?.versionLabel),
-    reason: permission.allowed ? undefined : permission.reason
-  }));
+  const policyRecords: DownloadRecord[] = policies.map((policy) => {
+    const urls = policy.documentReference.startsWith("/") ? [policy.documentReference] : [];
+    const downloadState = resolveInitialDownloadStatus(urls, permission, online);
+    return {
+      id: `policy:${policy.id}`,
+      kind: "policy",
+      title: policy.title,
+      urls,
+      downloadedAt: new Date().toISOString(),
+      ...downloadState,
+      versionKey: policyFingerprint(policy, policyVersions[policy.id]?.[0]?.versionLabel)
+    };
+  });
 
   return [...courseRecords, ...policyRecords];
+}
+
+export function resolveOfflineAvailability(
+  record: DownloadRecord | undefined,
+  online: boolean
+): OfflineAvailability {
+  if (!record) {
+    return { label: online ? "Preparing offline" : "Preparing offline", tone: "info" };
+  }
+  if (record.status === "ready") {
+    return { label: "Available offline", tone: "success" };
+  }
+  if (record.status === "online_only") {
+    return { label: "Online only", tone: "neutral" };
+  }
+  if (record.status === "failed") {
+    return { label: "Sync failed", tone: "danger" };
+  }
+  if (record.status === "blocked") {
+    return { label: "Offline unavailable", tone: "neutral" };
+  }
+  return { label: "Preparing offline", tone: "warning" };
 }
 
 export async function syncAssignedDownloads(
@@ -137,18 +184,22 @@ export async function syncAssignedDownloads(
       await invalidateUrlsForOffline(previous.urls);
     }
 
-    if (record.status !== "blocked" && online && record.urls.length > 0) {
-      await cacheUrlsForOffline(record.urls);
-      nextRecords.push({ ...record, status: "ready", downloadedAt: new Date().toISOString() });
+    if (record.status === "blocked" || record.status === "online_only") {
+      nextRecords.push(record);
       continue;
     }
 
-    if (record.status !== "blocked" && !online) {
+    if (!online) {
       nextRecords.push({ ...record, status: "pending_sync" });
       continue;
     }
 
-    nextRecords.push(record);
+    const cached = await cacheUrlsForOffline(record.urls);
+    nextRecords.push(
+      cached
+        ? { ...record, status: "ready", downloadedAt: new Date().toISOString(), reason: undefined }
+        : { ...record, status: "failed", reason: "Assigned content could not be cached for offline use." }
+    );
   }
 
   replaceManagedDownloads(nextRecords, scope);
@@ -221,3 +272,4 @@ export function uniq(values: string[]): string[] {
 export function buildQueuedProgressPath(basePath: string): string {
   return buildApiUrl(basePath, "/learning/progress");
 }
+

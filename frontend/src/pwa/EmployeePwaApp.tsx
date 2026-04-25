@@ -11,10 +11,11 @@ import {
   TrainingListView
 } from "./EmployeePwaViews";
 import { type ThemeMode, useThemeMode } from "./theme";
-import type { DownloadRecord, EmployeeCourse, EmployeePolicy, EmployeeTab } from "./types";
+import type { EmployeeCourse, EmployeePolicy, EmployeeTab } from "./types";
 import { useEmployeeActions } from "./useEmployeeActions";
 import { useEmployeeAuth } from "./useEmployeeAuth";
 import { useEmployeeWorkspaceData } from "./useEmployeeWorkspaceData";
+import { resolveOfflineAvailability } from "./workspaceHelpers";
 
 const NAV_ITEMS: Array<{ key: EmployeeTab; label: string }> = [
   { key: "home", label: "Home" },
@@ -23,36 +24,11 @@ const NAV_ITEMS: Array<{ key: EmployeeTab; label: string }> = [
   { key: "help", label: "Help" }
 ];
 
-type BadgeTone = "neutral" | "success" | "warning" | "danger" | "info";
-
-type OfflineIndicator = {
-  label: string;
-  tone: BadgeTone;
-};
-
 function buildGreeting(displayName: string): string {
   const hour = new Date().getHours();
   const firstName = displayName.split(" ").filter(Boolean)[0] ?? displayName;
   const intro = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   return `${intro}, ${firstName}`;
-}
-
-function resolveDownloadIndicator(record: DownloadRecord | undefined, online: boolean): OfflineIndicator {
-  if (!record) {
-    return online
-      ? { label: "Preparing offline access", tone: "info" }
-      : { label: "Will sync when online", tone: "warning" };
-  }
-
-  if (record.status === "ready") {
-    return { label: "Available offline", tone: "success" };
-  }
-
-  if (record.status === "pending_sync") {
-    return { label: "Will sync when online", tone: "warning" };
-  }
-
-  return { label: record.reason ?? "Offline restricted", tone: "neutral" };
 }
 
 function findFirstLessonId(course: EmployeeCourse | null): string | null {
@@ -108,10 +84,10 @@ export function EmployeePwaApp() {
   const incompleteTrainingCount = data.assignedCourses.filter((course) => data.resolveCourseStatus(course) !== "completed").length;
   const pendingPolicyTitle = nextPolicy?.title ?? null;
   const courseContinueLessonId = data.lesson?.id ?? findFirstLessonId(data.selectedCourse);
-  const courseContinueLabel = data.lesson ? `Continue ${data.lesson.title}` : courseContinueLessonId ? "Start next lesson" : "Review course";
+  const courseContinueLabel = courseContinueLessonId ? "Open lesson" : "Open course";
   const selectedCourseOffline = data.selectedCourse
-    ? resolveDownloadIndicator(downloadLookup.get(`course:${data.selectedCourse.id}`), data.online)
-    : { label: "Preparing offline access", tone: "info" as const };
+    ? resolveOfflineAvailability(downloadLookup.get(`course:${data.selectedCourse.id}`), data.online)
+    : { label: "Preparing offline", tone: "info" as const };
 
   useEffect(() => {
     setPolicyConfirmed(false);
@@ -222,7 +198,7 @@ export function EmployeePwaApp() {
 
         {!data.online ? (
           <Banner tone="warning" title="Offline mode">
-            Downloaded courses stay available. {data.queuedChangesCount > 0 ? `${data.queuedChangesCount} progress update${data.queuedChangesCount === 1 ? "" : "s"} will sync automatically.` : "New progress will queue until you reconnect."}
+            Offline-ready items stay available. {data.queuedChangesCount > 0 ? `${data.queuedChangesCount} progress update${data.queuedChangesCount === 1 ? "" : "s"} will sync automatically.` : "New progress will queue until you reconnect."}
           </Banner>
         ) : null}
 
@@ -278,7 +254,7 @@ export function EmployeePwaApp() {
                 courses={data.assignedCourses}
                 progress={data.progress}
                 resolveStatus={data.resolveCourseStatus}
-                offlineLookup={(courseId) => resolveDownloadIndicator(downloadLookup.get(`course:${courseId}`), data.online)}
+                offlineLookup={(courseId) => resolveOfflineAvailability(downloadLookup.get(`course:${courseId}`), data.online)}
                 onOpenCourse={handleOpenCourse}
               />
             )
@@ -354,3 +330,4 @@ export function EmployeePwaApp() {
     </main>
   );
 }
+

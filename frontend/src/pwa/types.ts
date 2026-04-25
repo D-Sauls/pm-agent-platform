@@ -55,7 +55,7 @@ export interface DownloadRecord {
   title: string;
   urls: string[];
   downloadedAt: string;
-  status: "ready" | "blocked" | "pending_sync";
+  status: "ready" | "blocked" | "pending_sync" | "preparing" | "online_only" | "failed";
   versionKey?: string;
   reason?: string;
 }
@@ -122,3 +122,4 @@ export interface PolicyVersionSummary {
 }
 
 export type EmployeeTab = "home" | "training" | "policies" | "help";
+

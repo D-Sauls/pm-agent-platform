@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { resolveAppSurface } from "../dist/surface.js";
 import { getAssistantDemoResult, normalizeAssistantMessage } from "../dist/assistantDemoData.js";
 import { resolveTenantBranding } from "../dist/pwa/branding.js";
 import { buildApiUrl, withBasePath } from "../dist/pwa/runtime.js";
+import { buildOfflineManifest, resolveOfflineAvailability, syncAssignedDownloads } from "../dist/pwa/workspaceHelpers.js";
 import {
   clearEmployeeSession,
   loadEmployeeSession,
@@ -51,6 +53,117 @@ assert.equal(loadEmployeeSession(mockStorage)?.tenantId, "tenant-acme");
 assert.equal(toEmployeeSessionAccess(loadEmployeeSession(mockStorage)).sessionToken, "token-123");
 clearEmployeeSession(mockStorage);
 assert.equal(loadEmployeeSession(mockStorage), null);
+
+const employeeViewsSource = fs.readFileSync(new URL("../src/pwa/EmployeePwaViews.tsx", import.meta.url), "utf8");
+const authSource = employeeViewsSource.slice(
+  employeeViewsSource.indexOf("export function AuthScreen"),
+  employeeViewsSource.indexOf("export function HomeTabView")
+);
+assert.match(authSource, /Employee ID/);
+assert.match(authSource, /Password/);
+assert.doesNotMatch(authSource, /tenantId|userId|department|debug|roleName/i);
+assert.doesNotMatch(authSource, />\s*Role\s*</i);
+
+const courseDetailSource = employeeViewsSource.slice(
+  employeeViewsSource.indexOf("export function CourseDetailView"),
+  employeeViewsSource.indexOf("export function PoliciesListView")
+);
+assert.doesNotMatch(courseDetailSource, /Start next lesson|next assigned lesson|completed\s+lesson/i);
+
+Object.defineProperty(globalThis, "localStorage", { value: mockStorage, configurable: true });
+const cachedUrls = [];
+Object.defineProperty(globalThis, "caches", {
+  value: {
+    open: async () => ({
+      put: async (url) => {
+        cachedUrls.push(String(url));
+      },
+      delete: async () => true
+    })
+  },
+  configurable: true
+});
+Object.defineProperty(globalThis, "fetch", {
+  value: async (url) => ({
+    ok: !String(url).includes("fail"),
+    clone() {
+      return this;
+    }
+  }),
+  configurable: true
+});
+
+const cacheableCourse = {
+  id: "course-cacheable",
+  tenantId: "tenant-acme",
+  title: "Kitchen Safety",
+  description: "Assigned kitchen training",
+  tags: [],
+  roleTargets: [],
+  publishedStatus: "published",
+  modules: [
+    {
+      id: "module-1",
+      courseId: "course-cacheable",
+      title: "Basics",
+      lessons: [
+        {
+          id: "lesson-1",
+          moduleId: "module-1",
+          title: "Knife safety",
+          contentType: "video",
+          contentReference: "/media/kitchen-safety.mp4",
+          estimatedDuration: 5
+        }
+      ]
+    }
+  ]
+};
+const onlineOnlyCourse = {
+  ...cacheableCourse,
+  id: "course-online-only",
+  title: "External Menu Training",
+  modules: [
+    {
+      id: "module-2",
+      courseId: "course-online-only",
+      title: "External",
+      lessons: [
+        {
+          id: "lesson-2",
+          moduleId: "module-2",
+          title: "External menu link",
+          contentType: "external_reference",
+          contentReference: "https://example.com/menu",
+          estimatedDuration: 3
+        }
+      ]
+    }
+  ]
+};
+
+mockStorage.data.clear();
+const manifest = buildOfflineManifest([cacheableCourse, onlineOnlyCourse], [], {}, "authenticated_only", true);
+const cacheableManifest = manifest.find((item) => item.id === "course:course-cacheable");
+const onlineOnlyManifest = manifest.find((item) => item.id === "course:course-online-only");
+assert.equal(cacheableManifest.status, "preparing");
+assert.equal(resolveOfflineAvailability(cacheableManifest, true).label, "Preparing offline");
+assert.equal(onlineOnlyManifest.status, "online_only");
+assert.equal(resolveOfflineAvailability(onlineOnlyManifest, true).label, "Online only");
+
+const syncedDownloads = await syncAssignedDownloads(manifest, true, "offline-validation");
+const syncedCacheable = syncedDownloads.find((item) => item.id === "course:course-cacheable");
+assert.equal(syncedCacheable.status, "ready");
+assert.equal(resolveOfflineAvailability(syncedCacheable, true).label, "Available offline");
+assert.ok(cachedUrls.some((url) => url.endsWith("/media/kitchen-safety.mp4")));
+
+const failedDownloads = await syncAssignedDownloads(
+  [{ ...cacheableManifest, id: "course:failed", urls: ["/media/fail.mp4"], status: "preparing" }],
+  true,
+  "offline-failure-validation"
+);
+assert.equal(failedDownloads[0].status, "failed");
+assert.equal(resolveOfflineAvailability(failedDownloads[0], true).label, "Sync failed");
 
 const rolePurposeReply = getAssistantDemoResult("What is my job role or the real purpose for me doing these coureses");
 assert.equal(rolePurposeReply.goalType, "role_context_demo");
