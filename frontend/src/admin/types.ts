@@ -1,14 +1,10 @@
 export type AdminPageKey =
   | "dashboard"
-  | "tenants"
-  | "tenantDetail"
-  | "licenses"
-  | "featureFlags"
-  | "prompts"
-  | "enhancements"
-  | "connectors"
-  | "compliance"
-  | "logs";
+  | "employees"
+  | "employeeDetail"
+  | "hrImport"
+  | "content"
+  | "settings";
 
 export interface AdminUserVm {
   id: string;

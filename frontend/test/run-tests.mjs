@@ -54,6 +54,16 @@ assert.equal(toEmployeeSessionAccess(loadEmployeeSession(mockStorage)).sessionTo
 clearEmployeeSession(mockStorage);
 assert.equal(loadEmployeeSession(mockStorage), null);
 
+const adminAppSource = fs.readFileSync(new URL("../src/admin/AdminApp.tsx", import.meta.url), "utf8");
+const adminLayoutSource = fs.readFileSync(new URL("../src/admin/components/AdminLayout.tsx", import.meta.url), "utf8");
+assert.match(adminAppSource, /EmployeeCompliancePage/);
+assert.match(adminAppSource, /HrImportPage/);
+assert.match(adminAppSource, /ContentManagementPage/);
+assert.match(adminAppSource, /TenantSettingsPage/);
+assert.doesNotMatch(adminAppSource, /TenantDetailPage|LicenseManagementPage|FeatureFlagsPage|PromptRegistryPage|ConnectorHealthPage/);
+assert.match(adminLayoutSource, /HR Import/);
+assert.match(adminLayoutSource, /Content/);
+assert.match(adminLayoutSource, /Settings/);
 const employeeViewsSource = fs.readFileSync(new URL("../src/pwa/EmployeePwaViews.tsx", import.meta.url), "utf8");
 const authSource = employeeViewsSource.slice(
   employeeViewsSource.indexOf("export function AuthScreen"),
@@ -212,3 +222,4 @@ for (const [prompt, expectedGoalType] of overlappingAssistantPromptCases) {
 }
 
 console.log("frontend smoke tests passed");
+

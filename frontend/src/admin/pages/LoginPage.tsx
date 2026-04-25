@@ -7,8 +7,8 @@ interface LoginPageProps {
 }
 
 export function LoginPage({ onLoggedIn }: LoginPageProps) {
-  const [email, setEmail] = useState("admin@local.dev");
-  const [password, setPassword] = useState("ChangeMe123!");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"local" | "entra">("local");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -35,23 +35,25 @@ export function LoginPage({ onLoggedIn }: LoginPageProps) {
 
   return (
     <main className="admin-login">
-      <h1>Admin Control Plane</h1>
-      <p>Auth mode: {mode}</p>
+      <span className="eyebrow">Admin portal</span>
+      <h1>Onboarding compliance console</h1>
+      <p>Sign in with an authorized HR or compliance administrator account.</p>
       {mode === "local" ? (
         <form onSubmit={handleSubmit} className="admin-login__form">
-          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
+          <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Admin email" autoComplete="username" />
           <input
             value={password}
             type="password"
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(event) => setPassword(event.target.value)}
             placeholder="Password"
+            autoComplete="current-password"
           />
-          <button type="submit" disabled={loading}>
+          <button type="submit" disabled={loading || !email || !password}>
             {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
       ) : (
-        <p>Entra ID mode scaffolded. Interactive sign-in will be connected in the next phase.</p>
+        <p>Enterprise identity sign-in is configured for this tenant.</p>
       )}
       {error ? <p className="admin-error">{error}</p> : null}
     </main>

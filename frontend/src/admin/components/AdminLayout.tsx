@@ -9,24 +9,23 @@ interface AdminLayoutProps {
   children: ReactNode;
 }
 
-const navItems: Array<{ key: AdminPageKey; label: string }> = [
-  { key: "dashboard", label: "Dashboard" },
-  { key: "tenants", label: "Tenants" },
-  { key: "tenantDetail", label: "Tenant Detail" },
-  { key: "licenses", label: "Licenses" },
-  { key: "featureFlags", label: "Feature Flags" },
-  { key: "prompts", label: "Prompt Registry" },
-  { key: "enhancements", label: "Enhancements" },
-  { key: "connectors", label: "Connector Health" },
-  { key: "compliance", label: "Compliance" },
-  { key: "logs", label: "Audit / Logs" }
+const navItems: Array<{ key: AdminPageKey; label: string; description: string }> = [
+  { key: "dashboard", label: "Dashboard", description: "Risk and action overview" },
+  { key: "employees", label: "Employees", description: "Compliance by person" },
+  { key: "hrImport", label: "HR Import", description: "Bulk onboarding control" },
+  { key: "content", label: "Content", description: "Courses and policies" },
+  { key: "settings", label: "Settings", description: "Tenant security and branding" }
 ];
 
 const roleAccess: Record<AdminUserVm["role"], AdminPageKey[]> = {
-  superadmin: navItems.map((item) => item.key),
-  supportadmin: ["dashboard", "tenants", "tenantDetail", "licenses", "enhancements", "connectors", "compliance", "logs"],
-  readonlyadmin: ["dashboard", "tenants", "tenantDetail", "connectors", "compliance", "logs"]
+  superadmin: ["dashboard", "employees", "employeeDetail", "hrImport", "content", "settings"],
+  supportadmin: ["dashboard", "employees", "employeeDetail", "hrImport", "content", "settings"],
+  readonlyadmin: ["dashboard", "employees", "employeeDetail", "content"]
 };
+
+function isActiveNav(currentPage: AdminPageKey, itemKey: AdminPageKey) {
+  return currentPage === itemKey || (currentPage === "employeeDetail" && itemKey === "employees");
+}
 
 export function AdminLayout({
   currentPage,
@@ -35,27 +34,40 @@ export function AdminLayout({
   onLogout,
   children
 }: AdminLayoutProps) {
+  const availableNav = navItems.filter((item) => roleAccess[user.role].includes(item.key));
+
   return (
     <div className="admin-shell">
-      <aside className="admin-shell__sidebar">
-        <h2>Admin</h2>
-        {navItems.filter((item) => roleAccess[user.role].includes(item.key)).map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            onClick={() => onNavigate(item.key)}
-            className={currentPage === item.key ? "admin-shell__nav admin-shell__nav--active" : "admin-shell__nav"}
-          >
-            {item.label}
-          </button>
-        ))}
+      <aside className="admin-shell__sidebar" aria-label="Admin navigation">
+        <div className="admin-shell__brand">
+          <span className="admin-shell__mark">OC</span>
+          <div>
+            <strong>Onboarding Control</strong>
+            <small>HR and compliance</small>
+          </div>
+        </div>
+        <nav className="admin-shell__nav-list">
+          {availableNav.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => onNavigate(item.key)}
+              className={isActiveNav(currentPage, item.key) ? "admin-shell__nav admin-shell__nav--active" : "admin-shell__nav"}
+            >
+              <span>{item.label}</span>
+              <small>{item.description}</small>
+            </button>
+          ))}
+        </nav>
       </aside>
-      <section>
+      <section className="admin-shell__content">
         <header className="admin-shell__header">
           <div>
-            <strong>{user.displayName}</strong> ({user.role})
+            <span className="eyebrow">Signed in admin</span>
+            <strong>{user.displayName}</strong>
+            <small>{user.role}</small>
           </div>
-          <button type="button" onClick={onLogout}>
+          <button type="button" className="admin-button admin-button--ghost" onClick={onLogout}>
             Logout
           </button>
         </header>

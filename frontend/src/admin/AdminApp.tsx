@@ -6,23 +6,20 @@ import {
   setAdminToken
 } from "../api/adminClient";
 import { AdminLayout } from "./components/AdminLayout";
-import { AuditLogsPage } from "./pages/AuditLogsPage";
-import { ConnectorHealthPage } from "./pages/ConnectorHealthPage";
-import { CompliancePage } from "./pages/CompliancePage";
+import { adminEmployees } from "./data/adminExperienceData";
+import { ContentManagementPage } from "./pages/ContentManagementPage";
 import { DashboardPage } from "./pages/DashboardPage";
-import { EnhancementRequestsPage } from "./pages/EnhancementRequestsPage";
-import { FeatureFlagsPage } from "./pages/FeatureFlagsPage";
-import { LicenseManagementPage } from "./pages/LicenseManagementPage";
+import { EmployeeCompliancePage } from "./pages/EmployeeCompliancePage";
+import { EmployeeDetailPage } from "./pages/EmployeeDetailPage";
+import { HrImportPage } from "./pages/HrImportPage";
 import { LoginPage } from "./pages/LoginPage";
-import { PromptRegistryPage } from "./pages/PromptRegistryPage";
-import { TenantDetailPage } from "./pages/TenantDetailPage";
-import { TenantsListPage } from "./pages/TenantsListPage";
+import { TenantSettingsPage } from "./pages/TenantSettingsPage";
 import type { AdminPageKey, AdminUserVm } from "./types";
 
 export function AdminApp() {
   const [currentPage, setCurrentPage] = useState<AdminPageKey>("dashboard");
   const [adminUser, setAdminUser] = useState<AdminUserVm | null>(null);
-  const [selectedTenantId, setSelectedTenantId] = useState("tenant-acme");
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState(adminEmployees[0]?.id ?? "");
   const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
@@ -62,26 +59,31 @@ export function AdminApp() {
         setAdminUser(null);
       }}
     >
-      {currentPage === "dashboard" ? <DashboardPage /> : null}
-      {currentPage === "tenants" ? (
-        <TenantsListPage
-          adminRole={adminUser.role}
-          onOpenTenant={(tenantId) => {
-            setSelectedTenantId(tenantId);
-            setCurrentPage("tenantDetail");
+      {currentPage === "dashboard" ? (
+        <DashboardPage
+          onOpenEmployee={(employeeId) => {
+            setSelectedEmployeeId(employeeId);
+            setCurrentPage("employeeDetail");
           }}
         />
       ) : null}
-      {currentPage === "tenantDetail" ? (
-        <TenantDetailPage tenantId={selectedTenantId} onTenantIdChange={setSelectedTenantId} />
+      {currentPage === "employees" ? (
+        <EmployeeCompliancePage
+          onOpenEmployee={(employeeId) => {
+            setSelectedEmployeeId(employeeId);
+            setCurrentPage("employeeDetail");
+          }}
+        />
       ) : null}
-      {currentPage === "licenses" ? <LicenseManagementPage adminRole={adminUser.role} /> : null}
-      {currentPage === "featureFlags" ? <FeatureFlagsPage adminRole={adminUser.role} /> : null}
-      {currentPage === "prompts" ? <PromptRegistryPage adminRole={adminUser.role} /> : null}
-      {currentPage === "enhancements" ? <EnhancementRequestsPage /> : null}
-      {currentPage === "connectors" ? <ConnectorHealthPage adminRole={adminUser.role} /> : null}
-      {currentPage === "compliance" ? <CompliancePage adminRole={adminUser.role} /> : null}
-      {currentPage === "logs" ? <AuditLogsPage /> : null}
+      {currentPage === "employeeDetail" ? (
+        <EmployeeDetailPage
+          employeeId={selectedEmployeeId}
+          onBack={() => setCurrentPage("employees")}
+        />
+      ) : null}
+      {currentPage === "hrImport" ? <HrImportPage /> : null}
+      {currentPage === "content" ? <ContentManagementPage /> : null}
+      {currentPage === "settings" ? <TenantSettingsPage /> : null}
     </AdminLayout>
   );
 }
