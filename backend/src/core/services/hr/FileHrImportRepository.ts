@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type {
   ActivationRecord,
+  ActivationDeliveryAttempt,
   HrImportState,
   ImportJobStatus,
   ProvisionedUser,
@@ -16,6 +17,7 @@ const emptyState = (): HrImportState => ({
   rows: [],
   users: [],
   activationRecords: [],
+  activationDeliveryAttempts: [],
   auditEvents: [],
   assignments: [],
   complianceStatuses: []
@@ -40,6 +42,12 @@ function reviveDates(state: HrImportState): HrImportState {
       expiresAt: record.expiresAt ? new Date(record.expiresAt) : null,
       activatedAt: record.activatedAt ? new Date(record.activatedAt) : null,
       createdAt: new Date(record.createdAt)
+    })),
+    activationDeliveryAttempts: (state.activationDeliveryAttempts ?? []).map((attempt) => ({
+      ...attempt,
+      sentAt: attempt.sentAt ? new Date(attempt.sentAt) : null,
+      failedAt: attempt.failedAt ? new Date(attempt.failedAt) : null,
+      createdAt: new Date(attempt.createdAt)
     })),
     auditEvents: state.auditEvents.map((event) => ({
       ...event,
@@ -73,6 +81,8 @@ export interface HrImportRepository {
   updateActivationRecord(record: ActivationRecord): ActivationRecord;
   findActivationRecordByTokenHash(tokenHash: string): ActivationRecord | null;
   listActivationRecords(tenantId: string): ActivationRecord[];
+  recordActivationDeliveryAttempt(attempt: ActivationDeliveryAttempt): ActivationDeliveryAttempt;
+  listActivationDeliveryAttempts(tenantId: string, userId?: string): ActivationDeliveryAttempt[];
   recordAssignment(outcome: RoleAssignmentOutcome): void;
   listAssignments(tenantId: string, userId?: string): RoleAssignmentOutcome[];
   upsertComplianceStatuses(statuses: ComplianceStatus[]): void;
@@ -217,6 +227,19 @@ export class FileHrImportRepository implements HrImportRepository {
 
   listActivationRecords(tenantId: string): ActivationRecord[] {
     return this.read().activationRecords.filter((record) => record.tenantId === tenantId);
+  }
+
+  recordActivationDeliveryAttempt(attempt: ActivationDeliveryAttempt): ActivationDeliveryAttempt {
+    const state = this.read();
+    state.activationDeliveryAttempts = [...(state.activationDeliveryAttempts ?? []), attempt];
+    this.write(state);
+    return attempt;
+  }
+
+  listActivationDeliveryAttempts(tenantId: string, userId?: string): ActivationDeliveryAttempt[] {
+    return (this.read().activationDeliveryAttempts ?? []).filter(
+      (attempt) => attempt.tenantId === tenantId && (!userId || attempt.userId === userId)
+    );
   }
 
   recordAssignment(outcome: RoleAssignmentOutcome): void {

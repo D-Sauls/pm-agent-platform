@@ -193,6 +193,9 @@ function buildEmployeeSummary(user: ProvisionedUser) {
   const latestAcknowledgement = acknowledgementServiceV2
     .findHistory({ tenantId: user.tenantId, userId: user.id })
     .sort((a, b) => b.recordedAt.getTime() - a.recordedAt.getTime())[0];
+  const latestActivationDelivery = userImportServiceV2
+    .listActivationDeliveryAttempts(user.tenantId, user.id)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
 
   return {
     id: user.id,
@@ -205,7 +208,11 @@ function buildEmployeeSummary(user: ProvisionedUser) {
     onboardingProgress: progress,
     lastActivity: iso(latestAcknowledgement?.recordedAt) ?? iso(user.updatedAt),
     nextAction: resolveNextAction(user, statuses),
-    accountStatus: user.accountStatus
+    accountStatus: user.accountStatus,
+    activationDeliveryStatus: latestActivationDelivery?.status ?? null,
+    activationDeliveryChannel: latestActivationDelivery?.channel ?? null,
+    activationDeliveryMessage: latestActivationDelivery?.message ?? null,
+    activationDeliveryAt: iso(latestActivationDelivery?.sentAt ?? latestActivationDelivery?.failedAt ?? latestActivationDelivery?.createdAt)
   };
 }
 
@@ -227,6 +234,22 @@ function buildEmployeeDetail(user: ProvisionedUser) {
   const acknowledgements = acknowledgementServiceV2.findHistory({ tenantId: user.tenantId, userId: user.id });
   const overrides = hrOverrideServiceV2.listOverrides(user.tenantId).filter((override) => override.userId === user.id);
   const statuses = buildStatuses(user);
+  const activationDeliveries = userImportServiceV2
+    .listActivationDeliveryAttempts(user.tenantId, user.id)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .map((attempt) => ({
+      id: attempt.id,
+      activationRecordId: attempt.activationRecordId,
+      provider: attempt.provider,
+      channel: attempt.channel,
+      status: attempt.status,
+      destination: attempt.destination,
+      message: attempt.message,
+      errorMessage: attempt.errorMessage,
+      sentAt: iso(attempt.sentAt),
+      failedAt: iso(attempt.failedAt),
+      createdAt: iso(attempt.createdAt)
+    }));
 
   const assignedCourses = assignedCourseIds
     .map((courseId) => safeCourse(user.tenantId, courseId))
@@ -303,6 +326,7 @@ function buildEmployeeDetail(user: ProvisionedUser) {
     ...summary,
     assignedCourses,
     assignedPolicies,
+    activationDeliveries,
     acknowledgementTimeline,
     auditLog,
     complianceStatuses: statuses.map((status) => ({ ...status, assignedAt: iso(status.assignedAt), dueDate: iso(status.dueDate), completedAt: iso(status.completedAt) }))

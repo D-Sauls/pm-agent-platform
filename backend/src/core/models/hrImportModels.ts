@@ -93,6 +93,26 @@ export interface ActivationRecord {
   createdAt: Date;
 }
 
+export type ActivationDeliveryProvider = "local_preview" | "webhook" | "sendgrid";
+export type ActivationDeliveryAttemptStatus = "delivered" | "queued" | "not_configured" | "failed";
+
+export interface ActivationDeliveryAttempt {
+  id: string;
+  tenantId: string;
+  userId: string;
+  activationRecordId: string;
+  destination?: string | null;
+  provider: ActivationDeliveryProvider;
+  channel: "email" | "webhook" | "log" | "disabled";
+  status: ActivationDeliveryAttemptStatus;
+  message: string;
+  errorMessage?: string | null;
+  correlationId?: string | null;
+  sentAt?: Date | null;
+  failedAt?: Date | null;
+  createdAt: Date;
+}
+
 export interface ColumnMapping {
   employeeCode?: string;
   firstName?: string;
@@ -129,6 +149,7 @@ export interface ImportProcessingSummary {
   failedRows: UserImportRow[];
   assignmentOutcomes: RoleAssignmentOutcome[];
   activationDeliveries?: Array<{
+    attemptId?: string;
     userId: string;
     status: string;
     channel: string;
@@ -146,6 +167,7 @@ export interface HrImportState {
   rows: UserImportRow[];
   users: ProvisionedUser[];
   activationRecords: ActivationRecord[];
+  activationDeliveryAttempts: ActivationDeliveryAttempt[];
   auditEvents: Array<{
     id: string;
     tenantId: string;

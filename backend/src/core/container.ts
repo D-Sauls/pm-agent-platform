@@ -190,7 +190,7 @@ export const importValidationServiceV2 = new ImportValidationService(
   roleProfileServiceV2
 );
 export const userProvisioningServiceV2 = new UserProvisioningService(hrImportRepository);
-export const activationDeliveryServiceV2 = new ActivationDeliveryService();
+export const activationDeliveryServiceV2 = new ActivationDeliveryService(hrImportRepository);
 export const roleAssignmentServiceV2 = new RoleAssignmentService(
   roleProfileServiceV2,
   onboardingPathServiceV2,

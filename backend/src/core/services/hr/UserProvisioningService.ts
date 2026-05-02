@@ -97,6 +97,17 @@ export class UserProvisioningService {
       throw new Error(`User ${userId} not found`);
     }
     const now = new Date();
+    for (const existing of this.repository.listActivationRecords(tenantId).filter(
+      (record) => record.userId === userId && !record.activatedAt
+    )) {
+      this.repository.updateActivationRecord({
+        ...existing,
+        activationTokenHash: null,
+        tempPasswordHash: null,
+        expiresAt: now,
+        activatedAt: now
+      });
+    }
     const token = randomBytes(24).toString("base64url");
     const activationRecord = this.repository.createActivationRecord({
       id: randomUUID(),

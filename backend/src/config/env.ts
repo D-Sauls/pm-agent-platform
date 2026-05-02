@@ -63,9 +63,11 @@ export function loadEnvConfig(source: EnvSource = process.env) {
     secondaryTenantRegion: source.SECONDARY_TENANT_REGION ?? "eu",
     activationBaseUrl: source.ACTIVATION_BASE_URL ?? source.FRONTEND_BASE_URL ?? "http://localhost:5173",
     activationDeliveryMode: source.ACTIVATION_DELIVERY_MODE ?? "log",
+    activationEmailProvider: source.ACTIVATION_EMAIL_PROVIDER ?? "sendgrid",
     activationDeliveryWebhookUrl: source.ACTIVATION_DELIVERY_WEBHOOK_URL ?? "",
     activationSenderEmail: source.ACTIVATION_SENDER_EMAIL ?? "no-reply@localhost",
     activationSenderSms: source.ACTIVATION_SENDER_SMS ?? "",
+    sendGridApiKey: source.SENDGRID_API_KEY ?? "",
     activationDeliveryPreview:
       source.ACTIVATION_DELIVERY_PREVIEW === "true" || appEnv === "local",
     allowVolatileRuntimeState: source.ALLOW_VOLATILE_RUNTIME_STATE === "true"

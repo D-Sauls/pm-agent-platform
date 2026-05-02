@@ -136,6 +136,11 @@ export class UserImportService {
   listAuditEvents(tenantId: string) {
     return this.repository.listAuditEvents(tenantId);
   }
+
+  listActivationDeliveryAttempts(tenantId: string, userId?: string) {
+    return this.repository.listActivationDeliveryAttempts(tenantId, userId);
+  }
+
   preview(tenantId: string, jobId: string): { job: UserImportJob; rows: UserImportRow[] } | null {
     const job = this.getJob(tenantId, jobId);
     if (!job) return null;

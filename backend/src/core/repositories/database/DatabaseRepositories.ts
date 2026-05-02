@@ -16,6 +16,7 @@ import type {
 } from "../../models/complianceModels.js";
 import type {
   ActivationRecord,
+  ActivationDeliveryAttempt,
   HrImportState,
   ImportJobStatus,
   ProvisionedUser,
@@ -574,6 +575,17 @@ export class DatabaseHrImportRepository implements HrImportRepository {
 
   listActivationRecords(tenantId: string): ActivationRecord[] {
     return this.store.list<ActivationRecord>("activation-record", tenantId);
+  }
+
+  recordActivationDeliveryAttempt(attempt: ActivationDeliveryAttempt): ActivationDeliveryAttempt {
+    this.store.append("activation-delivery-attempt", attempt.tenantId, attempt.id, attempt);
+    return attempt;
+  }
+
+  listActivationDeliveryAttempts(tenantId: string, userId?: string): ActivationDeliveryAttempt[] {
+    return this.store
+      .listEvents<ActivationDeliveryAttempt>("activation-delivery-attempt", tenantId)
+      .filter((attempt) => !userId || attempt.userId === userId);
   }
 
   recordAssignment(outcome: RoleAssignmentOutcome): void {
