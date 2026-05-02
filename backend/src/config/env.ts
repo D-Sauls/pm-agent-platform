@@ -67,7 +67,8 @@ export function loadEnvConfig(source: EnvSource = process.env) {
     activationSenderEmail: source.ACTIVATION_SENDER_EMAIL ?? "no-reply@localhost",
     activationSenderSms: source.ACTIVATION_SENDER_SMS ?? "",
     activationDeliveryPreview:
-      source.ACTIVATION_DELIVERY_PREVIEW === "true" || appEnv === "local"
+      source.ACTIVATION_DELIVERY_PREVIEW === "true" || appEnv === "local",
+    allowVolatileRuntimeState: source.ALLOW_VOLATILE_RUNTIME_STATE === "true"
   };
 }
 

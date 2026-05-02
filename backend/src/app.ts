@@ -22,7 +22,23 @@ import { teamsRoutes } from "./routes/teamsRoutes.js";
 
 export function createApp() {
   const app = express();
-  healthService.setStorageReadyProbe(() => Object.keys(repositories).length > 0);
+  const volatileRuntimeStores = [
+    "admin sessions",
+    "admin audit logs",
+    "usage logs",
+    "course/policy catalog",
+    "learning progress",
+    "acknowledgement history",
+    "assistant telemetry"
+  ];
+  healthService.setStorageReadyProbe(
+    () => Object.keys(repositories).length > 0 && (env.appEnv !== "production" || env.allowVolatileRuntimeState)
+  );
+  healthService.setRuntimeRiskProbe(() =>
+    env.appEnv === "production" && !env.allowVolatileRuntimeState
+      ? [`Volatile runtime stores must be replaced before production: ${volatileRuntimeStores.join(", ")}.`]
+      : []
+  );
 
   app.use(cors());
   app.use(requestContextMiddleware);
