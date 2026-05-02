@@ -86,13 +86,17 @@ assert.doesNotMatch(courseDetailSource, /Start next lesson|next assigned lesson|
 
 Object.defineProperty(globalThis, "localStorage", { value: mockStorage, configurable: true });
 const cachedUrls = [];
+const deletedUrls = [];
 Object.defineProperty(globalThis, "caches", {
   value: {
     open: async () => ({
       put: async (url) => {
         cachedUrls.push(String(url));
       },
-      delete: async () => true
+      delete: async (url) => {
+        deletedUrls.push(String(url));
+        return true;
+      }
     })
   },
   configurable: true
@@ -178,6 +182,38 @@ const failedDownloads = await syncAssignedDownloads(
 );
 assert.equal(failedDownloads[0].status, "failed");
 assert.equal(resolveOfflineAvailability(failedDownloads[0], true).label, "Sync failed");
+
+const manyLessonCourse = {
+  ...cacheableCourse,
+  id: "course-many-assets",
+  modules: [
+    {
+      id: "module-many",
+      courseId: "course-many-assets",
+      title: "Many assets",
+      lessons: Array.from({ length: 30 }, (_, index) => ({
+        id: `lesson-many-${index}`,
+        moduleId: "module-many",
+        title: `Asset ${index}`,
+        contentType: "video",
+        contentReference: `/media/stress-${index}.mp4`,
+        estimatedDuration: 2
+      }))
+    }
+  ]
+};
+const stressManifest = buildOfflineManifest([manyLessonCourse], [], {}, "authenticated_only", true);
+assert.equal(stressManifest[0].urls.length, 30);
+const syncedStressDownloads = await syncAssignedDownloads(stressManifest, true, "offline-stress-validation");
+assert.equal(syncedStressDownloads[0].status, "ready");
+assert.ok(cachedUrls.some((url) => url.endsWith("/media/stress-29.mp4")));
+
+mockStorage.data.set(
+  "offline_downloads:offline-version-validation",
+  JSON.stringify([{ ...stressManifest[0], versionKey: "old-version", urls: ["/media/old.mp4"], status: "ready" }])
+);
+await syncAssignedDownloads(stressManifest, true, "offline-version-validation");
+assert.ok(deletedUrls.some((url) => url.endsWith("/media/old.mp4")));
 
 const rolePurposeReply = getAssistantDemoResult("What is my job role or the real purpose for me doing these coureses");
 assert.equal(rolePurposeReply.goalType, "role_context_demo");
