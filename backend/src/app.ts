@@ -1,7 +1,7 @@
 import cors from "cors";
 import express from "express";
 import { env } from "./config/env.js";
-import { repositories } from "./core/container.js";
+import { persistenceRuntimeInfo, repositories } from "./core/container.js";
 import { errorHandlerMiddleware } from "./core/middleware/ErrorHandlerMiddleware.js";
 import { authenticateUser } from "./middleware/AuthMiddleware.js";
 import { tenantMiddleware } from "./middleware/TenantMiddleware.js";
@@ -24,20 +24,23 @@ export function createApp() {
   const app = express();
   const volatileRuntimeStores = [
     "admin sessions",
-    "admin audit logs",
-    "usage logs",
-    "course/policy catalog",
-    "learning progress",
-    "acknowledgement history",
-    "assistant telemetry"
+    "assistant telemetry",
+    "legacy PM/time repositories are retained only for retired route compatibility"
   ];
   healthService.setStorageReadyProbe(
-    () => Object.keys(repositories).length > 0 && (env.appEnv !== "production" || env.allowVolatileRuntimeState)
+    () =>
+      Object.keys(repositories).length > 0 &&
+      (env.appEnv === "production"
+        ? persistenceRuntimeInfo.productionReady
+        : persistenceRuntimeInfo.productionReady || env.allowVolatileRuntimeState)
   );
   healthService.setRuntimeRiskProbe(() =>
-    env.appEnv === "production" && !env.allowVolatileRuntimeState
-      ? [`Volatile runtime stores must be replaced before production: ${volatileRuntimeStores.join(", ")}.`]
-      : []
+    [
+      ...persistenceRuntimeInfo.warnings,
+      ...(env.appEnv === "production"
+        ? [`Remaining volatile runtime stores must be resolved before production: ${volatileRuntimeStores.join(", ")}.`]
+        : [])
+    ]
   );
 
   app.use(cors());

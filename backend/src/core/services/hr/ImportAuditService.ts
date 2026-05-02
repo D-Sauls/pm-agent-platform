@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
-import type { FileHrImportRepository } from "./FileHrImportRepository.js";
+import type { HrImportRepository } from "./FileHrImportRepository.js";
 
 export class ImportAuditService {
-  constructor(private readonly repository: FileHrImportRepository) {}
+  constructor(private readonly repository: HrImportRepository) {}
 
   record(
     tenantId: string,

@@ -54,7 +54,34 @@ function reviveDates(state: HrImportState): HrImportState {
   };
 }
 
-export class FileHrImportRepository {
+export interface HrImportRepository {
+  createJob(job: UserImportJob): UserImportJob;
+  updateJob(job: UserImportJob): UserImportJob;
+  updateJobStatus(jobId: string, status: ImportJobStatus, completedAt?: Date | null): UserImportJob;
+  getJob(jobId: string): UserImportJob | null;
+  listJobs(tenantId?: string): UserImportJob[];
+  replaceRows(jobId: string, rows: UserImportRow[]): void;
+  updateRows(rows: UserImportRow[]): void;
+  listRows(jobId: string): UserImportRow[];
+  findUserByEmployeeCode(tenantId: string, employeeCode: string): ProvisionedUser | null;
+  findUserByEmail(tenantId: string, workEmail: string): ProvisionedUser | null;
+  findUserByUsername(tenantId: string, username: string): ProvisionedUser | null;
+  createUser(user: ProvisionedUser): ProvisionedUser;
+  updateUser(user: ProvisionedUser): ProvisionedUser;
+  listUsers(tenantId: string): ProvisionedUser[];
+  createActivationRecord(record: ActivationRecord): ActivationRecord;
+  updateActivationRecord(record: ActivationRecord): ActivationRecord;
+  findActivationRecordByTokenHash(tokenHash: string): ActivationRecord | null;
+  listActivationRecords(tenantId: string): ActivationRecord[];
+  recordAssignment(outcome: RoleAssignmentOutcome): void;
+  listAssignments(tenantId: string, userId?: string): RoleAssignmentOutcome[];
+  upsertComplianceStatuses(statuses: ComplianceStatus[]): void;
+  listComplianceStatuses(tenantId: string, userId?: string): ComplianceStatus[];
+  appendAudit(event: HrImportState["auditEvents"][number]): void;
+  listAuditEvents(tenantId: string): HrImportState["auditEvents"];
+}
+
+export class FileHrImportRepository implements HrImportRepository {
   constructor(private readonly filePath: string) {
     fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
     if (!fs.existsSync(this.filePath)) {

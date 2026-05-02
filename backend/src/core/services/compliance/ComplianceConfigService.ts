@@ -28,8 +28,14 @@ function durableWriteJson(filePath: string, value: unknown): void {
 export class ComplianceConfigService {
   private readonly configs = new Map<string, ComplianceConfig>();
 
-  constructor(private readonly filePath?: string) {
-    if (filePath) {
+  constructor(
+    private readonly filePath?: string,
+    private readonly repository?: {
+      getByTenantSync(tenantId: string): ComplianceConfig | null;
+      upsertSync(tenantId: string, config: ComplianceConfig): ComplianceConfig;
+    }
+  ) {
+    if (filePath && !repository) {
       fs.mkdirSync(path.dirname(filePath), { recursive: true });
       if (!fs.existsSync(filePath)) {
         fs.writeFileSync(filePath, JSON.stringify({}, null, 2), "utf8");
@@ -38,6 +44,10 @@ export class ComplianceConfigService {
   }
 
   getConfig(tenantId: string): ComplianceConfig {
+    const stored = this.repository?.getByTenantSync(tenantId);
+    if (stored) {
+      return stored;
+    }
     return this.readConfigs()[tenantId] ?? defaultComplianceConfig;
   }
 
@@ -46,6 +56,9 @@ export class ComplianceConfigService {
       ...this.getConfig(tenantId),
       ...config
     };
+    if (this.repository) {
+      return this.repository.upsertSync(tenantId, next);
+    }
     const configs = this.readConfigs();
     configs[tenantId] = next;
     this.writeConfigs(configs);

@@ -21,11 +21,8 @@ import {
   MemoryTimeEntryRepository,
   MemoryUsageLogRepository
 } from "./repositories/memory/MemoryRepositories.js";
-import { createFileTenantConfigRepositories } from "./repositories/file/FileTenantConfigRepositories.js";
-import {
-  FileOnboardingPathRepository,
-  FileRoleProfileRepository
-} from "./repositories/file/FileOnboardingRepositories.js";
+import { SqliteAppDatabase } from "./database/SqliteAppDatabase.js";
+import { createDatabaseRepositories } from "./repositories/database/DatabaseRepositories.js";
 import { ConnectorRouter } from "./services/ConnectorRouter.js";
 import { ForecastService } from "./services/ForecastService.js";
 import { LicenseService } from "./services/LicenseService.js";
@@ -91,7 +88,6 @@ import { OnboardingRecommendationWorkflow } from "./services/workflows/onboardin
 import { NextTrainingStepWorkflow } from "./services/workflows/nextTrainingStepWorkflow.js";
 import { RoleKnowledgeLookupWorkflow } from "./services/workflows/roleKnowledgeLookupWorkflow.js";
 import { RequirementStatusWorkflow } from "./services/workflows/requirementStatusWorkflow.js";
-import { FileHrImportRepository } from "./services/hr/FileHrImportRepository.js";
 import { ImportAuditService } from "./services/hr/ImportAuditService.js";
 import { ImportMappingService } from "./services/hr/ImportMappingService.js";
 import { ImportValidationService } from "./services/hr/ImportValidationService.js";
@@ -109,25 +105,20 @@ const defaultTenantId = env.defaultTenantId;
 const secondaryTenantId = env.secondaryTenantId;
 const defaultTenantName = env.defaultTenantName;
 const secondaryTenantName = env.secondaryTenantName;
-const tenantConfigRepositories = createFileTenantConfigRepositories(dataPath("tenant-config-store.json"));
-const tenantRepository = tenantConfigRepositories.tenantRepository;
-const licenseRepository = tenantConfigRepositories.licenseRepository;
-const usageLogRepository = new MemoryUsageLogRepository();
-const adminAuditLogRepository = new MemoryAdminAuditLogRepository();
+export const { database: appDatabase, info: persistenceRuntimeInfo } = SqliteAppDatabase.fromEnv();
+const databaseRepositories = createDatabaseRepositories(appDatabase);
+const tenantRepository = databaseRepositories.tenantRepository;
+const licenseRepository = databaseRepositories.licenseRepository;
+const usageLogRepository = databaseRepositories.usageLogRepository;
+const adminAuditLogRepository = databaseRepositories.adminAuditLogRepository;
 const projectRepository = new MemoryProjectRepository();
-const promptMappingRepository = tenantConfigRepositories.promptMappingRepository;
+const promptMappingRepository = databaseRepositories.promptMappingRepository;
 const timeEntryRepository = new MemoryTimeEntryRepository();
 const resourceRepository = new MemoryResourceRepository();
-const connectorConfigRepository = tenantConfigRepositories.connectorConfigRepository;
-const roleProfileRepository = new FileRoleProfileRepository(
-  dataPath("onboarding-role-profiles.json")
-);
-const onboardingPathRepository = new FileOnboardingPathRepository(
-  dataPath("onboarding-paths.json")
-);
-const hrImportRepository = new FileHrImportRepository(
-  dataPath("hr-import-store.json")
-);
+const connectorConfigRepository = databaseRepositories.connectorConfigRepository;
+const roleProfileRepository = databaseRepositories.roleProfileRepository;
+const onboardingPathRepository = databaseRepositories.onboardingPathRepository;
+const hrImportRepository = databaseRepositories.hrImportRepository;
 
 export const tenantServiceV2 = new TenantService(
   tenantRepository,
@@ -171,19 +162,26 @@ export const projectContextServiceV2 = new ProjectContextService(
 export const tenantContextServiceV2 = new TenantContextService(tenantServiceV2, licenseServiceV2);
 export const reportingEngineV2 = new ReportingEngine(new PromptEngine());
 export const forecastEngineV2 = new ForecastEngine();
-export const courseServiceV2 = new CourseService();
-export const learningProgressServiceV2 = new LearningProgressService();
+export const courseServiceV2 = new CourseService(databaseRepositories.courseCatalogRepository);
+export const learningProgressServiceV2 = new LearningProgressService(
+  databaseRepositories.learningProgressRepository
+);
 export const lessonServiceV2 = new LessonService(courseServiceV2, learningProgressServiceV2);
-export const policyServiceV2 = new PolicyService();
+export const policyServiceV2 = new PolicyService(databaseRepositories.policyCatalogRepository);
 export const knowledgeIndexServiceV2 = new KnowledgeIndexService();
 export const recommendationServiceV2 = new RecommendationService(courseServiceV2, policyServiceV2);
 export const roleProfileServiceV2 = new RoleProfileService(roleProfileRepository);
 export const onboardingPathServiceV2 = new OnboardingPathService(onboardingPathRepository);
-export const complianceConfigServiceV2 = new ComplianceConfigService(dataPath("compliance-config-store.json"));
-export const policyVersionServiceV2 = new PolicyVersionService();
-export const courseVersionServiceV2 = new CourseVersionService();
-export const acknowledgementServiceV2 = new AcknowledgementService();
-export const complianceRequirementServiceV2 = new ComplianceRequirementService();
+export const complianceConfigServiceV2 = new ComplianceConfigService(
+  undefined,
+  databaseRepositories.complianceConfigRepository
+);
+export const policyVersionServiceV2 = new PolicyVersionService(databaseRepositories.policyVersionRepository);
+export const courseVersionServiceV2 = new CourseVersionService(databaseRepositories.courseVersionRepository);
+export const acknowledgementServiceV2 = new AcknowledgementService(databaseRepositories.acknowledgementRepository);
+export const complianceRequirementServiceV2 = new ComplianceRequirementService(
+  databaseRepositories.complianceRequirementRepository
+);
 export const spreadsheetParserServiceV2 = new SpreadsheetParserService();
 export const importMappingServiceV2 = new ImportMappingService();
 export const importAuditServiceV2 = new ImportAuditService(hrImportRepository);
@@ -224,7 +222,7 @@ export const onboardingProgressServiceV2 = new OnboardingProgressService(
   policyServiceV2
 );
 export const complianceTrackingServiceV2 = new ComplianceTrackingService();
-export const hrOverrideServiceV2 = new HROverrideService();
+export const hrOverrideServiceV2 = new HROverrideService(databaseRepositories.hrOverrideRepository);
 export const complianceReportServiceV2 = new ComplianceReportService();
 export const forecastServiceV2 = new ForecastService(
   forecastEngineV2,

@@ -9,7 +9,7 @@ import type {
   UserImportRow
 } from "../../models/hrImportModels.js";
 import { defaultProvisioningConfig } from "../../models/hrImportModels.js";
-import type { FileHrImportRepository } from "./FileHrImportRepository.js";
+import type { HrImportRepository } from "./FileHrImportRepository.js";
 import type { ImportAuditService } from "./ImportAuditService.js";
 import type { ImportMappingService } from "./ImportMappingService.js";
 import type { ImportValidationService } from "./ImportValidationService.js";
@@ -30,7 +30,7 @@ export interface CreateImportJobInput {
 
 export class UserImportService {
   constructor(
-    private readonly repository: FileHrImportRepository,
+    private readonly repository: HrImportRepository,
     private readonly parser: SpreadsheetParserService,
     private readonly mappingService: ImportMappingService,
     private readonly validationService: ImportValidationService,

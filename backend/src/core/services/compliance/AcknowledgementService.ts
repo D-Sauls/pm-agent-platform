@@ -6,8 +6,16 @@ import type {
 } from "../../models/complianceModels.js";
 import { loggingService } from "../../../observability/runtime.js";
 
+export interface AcknowledgementStore {
+  appendSync(record: AcknowledgementRecord): void;
+  appendIfMissing(record: AcknowledgementRecord): void;
+  listByTenantSync(tenantId: string): AcknowledgementRecord[];
+}
+
 export class AcknowledgementService {
   private acknowledgements: AcknowledgementRecord[] = [];
+
+  constructor(private readonly store?: AcknowledgementStore) {}
 
   recordAcknowledgement(
     record: AcknowledgementRecord,
@@ -15,7 +23,11 @@ export class AcknowledgementService {
     signatureRequired: boolean
   ): AcknowledgementRecord {
     this.validateAcknowledgement(record.acknowledgementType, config, signatureRequired);
-    this.acknowledgements.push(record);
+    if (this.store) {
+      this.store.appendSync(record);
+    } else {
+      this.acknowledgements.push(record);
+    }
     loggingService.info("compliance.acknowledgement.recorded", {
       tenantId: record.tenantId,
       actorId: record.actorId ?? record.userId,
@@ -27,6 +39,9 @@ export class AcknowledgementService {
   }
 
   listByTenant(tenantId: string): AcknowledgementRecord[] {
+    if (this.store) {
+      return this.store.listByTenantSync(tenantId).map((record) => ({ ...record }));
+    }
     return this.acknowledgements.filter((record) => record.tenantId === tenantId).map((record) => ({ ...record }));
   }
 
@@ -36,7 +51,7 @@ export class AcknowledgementService {
     subjectType?: AcknowledgementRecord["subjectType"];
     subjectId?: string;
   }): AcknowledgementRecord[] {
-    return this.acknowledgements.filter((record) => {
+    return this.listByTenant(filters.tenantId).filter((record) => {
       if (record.tenantId !== filters.tenantId) return false;
       if (filters.userId && record.userId !== filters.userId) return false;
       if (filters.subjectType && record.subjectType !== filters.subjectType) return false;
@@ -46,6 +61,12 @@ export class AcknowledgementService {
   }
 
   replaceAcknowledgementsForTenant(tenantId: string, nextRecords: AcknowledgementRecord[]): void {
+    if (this.store) {
+      for (const record of nextRecords.filter((entry) => entry.tenantId === tenantId)) {
+        this.store.appendIfMissing(record);
+      }
+      return;
+    }
     const existingIds = new Set(this.acknowledgements.map((record) => record.id));
     this.acknowledgements.push(
       ...nextRecords.filter((record) => record.tenantId === tenantId && !existingIds.has(record.id))

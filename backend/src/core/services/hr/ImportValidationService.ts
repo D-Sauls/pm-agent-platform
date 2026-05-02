@@ -4,7 +4,7 @@ import type {
   UserImportRow,
   ValidationStatus
 } from "../../models/hrImportModels.js";
-import type { FileHrImportRepository } from "./FileHrImportRepository.js";
+import type { HrImportRepository } from "./FileHrImportRepository.js";
 import type { RoleProfileService } from "../onboarding/RoleProfileService.js";
 
 function validEmail(email: string): boolean {
@@ -13,7 +13,7 @@ function validEmail(email: string): boolean {
 
 export class ImportValidationService {
   constructor(
-    private readonly repository: FileHrImportRepository,
+    private readonly repository: HrImportRepository,
     private readonly roleProfileService: RoleProfileService
   ) {}
 

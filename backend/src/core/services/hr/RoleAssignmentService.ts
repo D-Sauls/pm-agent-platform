@@ -2,14 +2,14 @@ import type { ProvisionedUser, RoleAssignmentOutcome } from "../../models/hrImpo
 import type { ComplianceRequirementService } from "../compliance/ComplianceRequirementService.js";
 import type { OnboardingPathService } from "../onboarding/OnboardingPathService.js";
 import type { RoleProfileService } from "../onboarding/RoleProfileService.js";
-import type { FileHrImportRepository } from "./FileHrImportRepository.js";
+import type { HrImportRepository } from "./FileHrImportRepository.js";
 
 export class RoleAssignmentService {
   constructor(
     private readonly roleProfileService: RoleProfileService,
     private readonly onboardingPathService: OnboardingPathService,
     private readonly complianceRequirementService: ComplianceRequirementService,
-    private readonly repository: FileHrImportRepository
+    private readonly repository: HrImportRepository
   ) {}
 
   async assign(user: ProvisionedUser): Promise<RoleAssignmentOutcome> {

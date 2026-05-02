@@ -6,8 +6,15 @@ import type {
 } from "../../models/complianceModels.js";
 import { loggingService } from "../../../observability/runtime.js";
 
+export interface HROverrideStore {
+  appendSync(record: HROverrideRecord): void;
+  listByTenantSync(tenantId: string): HROverrideRecord[];
+}
+
 export class HROverrideService {
   private readonly overrides: HROverrideRecord[] = [];
+
+  constructor(private readonly store?: HROverrideStore) {}
 
   createOverride(
     override: HROverrideRecord,
@@ -17,7 +24,11 @@ export class HROverrideService {
       throw new AppError("UNAUTHORIZED", "HR override is disabled for this tenant", 403);
     }
 
-    this.overrides.push(override);
+    if (this.store) {
+      this.store.appendSync(override);
+    } else {
+      this.overrides.push(override);
+    }
     loggingService.info("compliance.hr_override.recorded", {
       tenantId: override.tenantId,
       actorId: override.overriddenBy,
@@ -45,6 +56,9 @@ export class HROverrideService {
   }
 
   listOverrides(tenantId: string): HROverrideRecord[] {
+    if (this.store) {
+      return this.store.listByTenantSync(tenantId);
+    }
     return this.overrides.filter((record) => record.tenantId === tenantId);
   }
 }

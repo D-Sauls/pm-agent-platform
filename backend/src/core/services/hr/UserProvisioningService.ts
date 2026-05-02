@@ -5,7 +5,7 @@ import type {
   ProvisioningConfig,
   UserImportRow
 } from "../../models/hrImportModels.js";
-import type { FileHrImportRepository } from "./FileHrImportRepository.js";
+import type { HrImportRepository } from "./FileHrImportRepository.js";
 import { employeeSessionService } from "../auth/EmployeeSessionService.js";
 
 function hashSecret(secret: string): string {
@@ -27,7 +27,7 @@ function hashToken(token: string): string {
 }
 
 export class UserProvisioningService {
-  constructor(private readonly repository: FileHrImportRepository) {}
+  constructor(private readonly repository: HrImportRepository) {}
 
   provision(tenantId: string, row: UserImportRow, config: ProvisioningConfig): {
     user: ProvisionedUser;
