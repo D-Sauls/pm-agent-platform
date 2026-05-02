@@ -263,7 +263,7 @@ const complianceStatusQuerySchema = z.object({
   department: z.string().optional()
 });
 const acknowledgementSchema = z.object({
-  tenantId: z.string().min(1),
+  tenantId: z.string().min(1).optional(),
   subjectType: z.enum(["policy", "course", "lesson"]),
   subjectId: z.string().min(1),
   acknowledgementType: z.enum(["opened", "completed", "accepted", "signed"]),
