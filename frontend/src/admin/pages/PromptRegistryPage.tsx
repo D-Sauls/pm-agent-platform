@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getAdminJson, postAdminJson } from "../../api/adminClient";
-import { ADMIN_TENANT_ID } from "../api/adminExperienceApi";
+import { getAdminTenantId } from "../api/adminTenantScope.js";
 
 interface PromptVersionVm {
   promptKey: string;
@@ -15,7 +15,7 @@ interface PromptRegistryPageProps {
 
 export function PromptRegistryPage({ adminRole }: PromptRegistryPageProps) {
   const [promptKey, setPromptKey] = useState("onboarding_assistant");
-  const [tenantId, setTenantId] = useState(ADMIN_TENANT_ID);
+  const [tenantId, setTenantId] = useState(getAdminTenantId());
   const [versions, setVersions] = useState<PromptVersionVm[]>([]);
   const [promptKeys, setPromptKeys] = useState<string[]>([]);
   const [assignments, setAssignments] = useState<Array<{ promptKey: string; activeVersion: string }>>([]);

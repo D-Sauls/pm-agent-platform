@@ -1,7 +1,5 @@
 import { getAdminJson, patchAdminJson, postAdminJson } from "../../api/adminClient";
-import { defaultTenantId } from "../../config/tenantConfig.js";
-
-export const ADMIN_TENANT_ID = defaultTenantId();
+import { getAdminTenantId } from "./adminTenantScope.js";
 
 export type AdminComplianceStatus = "compliant" | "pending" | "overdue" | "non_compliant";
 export type AdminTone = "neutral" | "success" | "warning" | "danger";
@@ -123,16 +121,26 @@ export interface HrImportPreviewResponse {
   rows: HrImportRow[];
 }
 
+export interface ActivationDeliverySummary {
+  userId: string;
+  status: string;
+  channel: string;
+  destination?: string | null;
+  message: string;
+}
+
 function withTenant(path: string) {
-  if (!ADMIN_TENANT_ID) {
+  const tenantId = getAdminTenantId();
+  if (!tenantId) {
     return path;
   }
   const separator = path.includes("?") ? "&" : "?";
-  return `${path}${separator}tenantId=${encodeURIComponent(ADMIN_TENANT_ID)}`;
+  return `${path}${separator}tenantId=${encodeURIComponent(tenantId)}`;
 }
 
 function tenantBody<T extends Record<string, unknown>>(body: T): T & { tenantId?: string } {
-  return ADMIN_TENANT_ID ? { ...body, tenantId: ADMIN_TENANT_ID } : body;
+  const tenantId = getAdminTenantId();
+  return tenantId ? { ...body, tenantId } : body;
 }
 
 function formatDate(value: string | null | undefined) {
@@ -212,7 +220,13 @@ export async function loadHrImportPreview(jobId: string) {
 }
 
 export async function processHrImportJob(jobId: string) {
-  return postAdminJson<HrImportPreviewResponse & { provisionedUsers?: unknown[]; failedRows?: HrImportRow[] }>(`/hr-import/jobs/${jobId}/process`, tenantBody({}));
+  return postAdminJson<
+    HrImportPreviewResponse & {
+      provisionedUsers?: unknown[];
+      failedRows?: HrImportRow[];
+      activationDeliveries?: ActivationDeliverySummary[];
+    }
+  >(`/hr-import/jobs/${jobId}/process`, tenantBody({}));
 }
 
 export async function uploadHrImportFile(file: File) {

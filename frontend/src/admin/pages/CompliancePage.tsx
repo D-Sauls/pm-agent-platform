@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getAdminJson, postAdminJson } from "../../api/adminClient";
-import { ADMIN_TENANT_ID } from "../api/adminExperienceApi";
+import { getAdminTenantId } from "../api/adminTenantScope.js";
 
 interface CompliancePageProps {
   adminRole: "superadmin" | "supportadmin" | "readonlyadmin";
@@ -22,7 +22,7 @@ interface ComplianceSummaryVm {
 }
 
 export function CompliancePage({ adminRole }: CompliancePageProps) {
-  const [tenantId, setTenantId] = useState(ADMIN_TENANT_ID);
+  const [tenantId, setTenantId] = useState(getAdminTenantId());
   const [userId, setUserId] = useState("user-fin-1");
   const [summary, setSummary] = useState<ComplianceSummaryVm | null>(null);
   const [acknowledgements, setAcknowledgements] = useState<Array<any>>([]);

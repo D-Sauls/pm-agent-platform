@@ -39,6 +39,9 @@ export function DashboardPage({ onOpenEmployee }: DashboardPageProps) {
   if (error) return <p className="admin-error">{error}</p>;
   if (!dashboard) return <p className="admin-empty-state">No dashboard data is available.</p>;
 
+  const overdueAtRisk = dashboard.atRisk.filter((employee) => employee.overdueItems > 0).length;
+  const criticalAtRisk = dashboard.atRisk.filter((employee) => employee.complianceStatus === "non_compliant").length;
+
   return (
     <section className="admin-page-stack">
       <div className="admin-page-heading">
@@ -75,9 +78,19 @@ export function DashboardPage({ onOpenEmployee }: DashboardPageProps) {
           <div className="admin-panel__header">
             <div>
               <h2>At Risk</h2>
-              <p>Users failing compliance or carrying overdue work.</p>
+              <p>Prioritized users who need HR or compliance follow-up.</p>
             </div>
             <span className="admin-badge admin-badge--danger">{dashboard.atRisk.length} users</span>
+          </div>
+          <div className="admin-risk-summary">
+            <div>
+              <strong>{criticalAtRisk}</strong>
+              <span>Non-compliant</span>
+            </div>
+            <div>
+              <strong>{overdueAtRisk}</strong>
+              <span>Overdue</span>
+            </div>
           </div>
           {dashboard.atRisk.length === 0 ? (
             <p className="admin-empty-state">No at-risk users found for this tenant.</p>
@@ -88,9 +101,15 @@ export function DashboardPage({ onOpenEmployee }: DashboardPageProps) {
                   <span>
                     <strong>{employee.name}</strong>
                     <small>{employee.department} - {employee.role}</small>
+                    <small>{employee.nextAction}</small>
                   </span>
-                  <span className={`admin-badge admin-badge--${getStatusTone(employee.complianceStatus)}`}>
-                    {getStatusLabel(employee.complianceStatus)}
+                  <span className="admin-risk-stack">
+                    <span className={`admin-badge admin-badge--${getStatusTone(employee.complianceStatus)}`}>
+                      {getStatusLabel(employee.complianceStatus)}
+                    </span>
+                    {employee.overdueItems > 0 ? (
+                      <small>{employee.overdueItems} overdue</small>
+                    ) : null}
                   </span>
                 </button>
               ))}

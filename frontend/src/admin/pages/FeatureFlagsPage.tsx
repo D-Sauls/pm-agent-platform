@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getAdminJson, postAdminJson } from "../../api/adminClient";
-import { ADMIN_TENANT_ID } from "../api/adminExperienceApi";
+import { getAdminTenantId } from "../api/adminTenantScope.js";
 
 interface FeatureFlagVm {
   key: string;
@@ -13,7 +13,7 @@ interface FeatureFlagsPageProps {
 }
 
 export function FeatureFlagsPage({ adminRole }: FeatureFlagsPageProps) {
-  const [tenantId, setTenantId] = useState(ADMIN_TENANT_ID);
+  const [tenantId, setTenantId] = useState(getAdminTenantId());
   const [globalFlags, setGlobalFlags] = useState<FeatureFlagVm[]>([]);
   const [tenantFlags, setTenantFlags] = useState<Record<string, boolean>>({});
   const [effectiveFlags, setEffectiveFlags] = useState<Record<string, boolean>>({});

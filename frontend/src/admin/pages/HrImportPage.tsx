@@ -6,6 +6,7 @@ import {
   loadHrImportPreview,
   processHrImportJob,
   uploadHrImportFile,
+  type ActivationDeliverySummary,
   type HrImportJob,
   type HrImportRow
 } from "../api/adminExperienceApi";
@@ -25,6 +26,7 @@ export function HrImportPage() {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [activationDeliveries, setActivationDeliveries] = useState<ActivationDeliverySummary[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,6 +61,17 @@ export function HrImportPage() {
   const errors = rows.filter((row) => row.validationStatus === "invalid").length;
   const warnings = rows.filter((row) => row.validationStatus === "warning").length;
   const readyRows = rows.filter((row) => row.validationStatus === "valid").length;
+  const reviewedRows = readyRows + warnings;
+  const canProcess = Boolean(activeJob) && rows.length > 0 && errors === 0 && !processing;
+  const processBlockReason = !activeJob
+    ? "Upload a spreadsheet first."
+    : rows.length === 0
+      ? "No rows are ready to process."
+      : errors > 0
+        ? "Fix blocking errors before provisioning users."
+        : warnings > 0
+          ? "Warnings will be processed. Review them before continuing."
+          : "All valid rows can be provisioned.";
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     setSelectedFile(event.target.files?.[0] ?? null);
@@ -95,6 +108,7 @@ export function HrImportPage() {
       const preview = await loadHrImportPreview(result.job.id);
       setActiveJob(preview.job);
       setRows(preview.rows);
+      setActivationDeliveries(result.activationDeliveries ?? []);
       setCurrentStep("Process");
       setMessage(`Import processed: ${result.job.successfulRows} successful, ${result.job.failedRows} failed.`);
     } catch (processError) {
@@ -139,7 +153,7 @@ export function HrImportPage() {
           </div>
           <div className="admin-upload-box">
             <strong>{selectedFile ? selectedFile.name : "Choose HR spreadsheet"}</strong>
-            <span>Dry-run preview is enabled before any provisioning action.</span>
+            <span>Nothing is provisioned until you review the preview and press Process valid rows.</span>
             <input type="file" accept=".csv,.xlsx" onChange={handleFileChange} />
             <button type="button" className="admin-button admin-button--ghost" disabled={!selectedFile || uploading} onClick={handleUpload}>
               {uploading ? "Uploading..." : "Upload and preview"}
@@ -155,8 +169,12 @@ export function HrImportPage() {
             </div>
           </div>
           {activeJob ? <p className="helper-text">Latest job: {activeJob.fileName} - {activeJob.status} - {formatAdminDate(activeJob.startedAt)}</p> : null}
+          <div className={`admin-import-decision ${errors > 0 ? "admin-import-decision--danger" : warnings > 0 ? "admin-import-decision--warning" : "admin-import-decision--success"}`}>
+            <strong>{errors > 0 ? "Not ready to process" : activeJob ? "Ready for admin decision" : "Waiting for upload"}</strong>
+            <span>{processBlockReason}</span>
+          </div>
           <div className="admin-summary-list">
-            <div><strong>{readyRows}</strong><span>Rows ready</span></div>
+            <div><strong>{reviewedRows}</strong><span>Rows eligible</span></div>
             <div><strong>{warnings}</strong><span>Warnings or duplicates</span></div>
             <div><strong>{errors}</strong><span>Blocking errors</span></div>
           </div>
@@ -164,17 +182,30 @@ export function HrImportPage() {
             <button type="button" className="admin-button admin-button--ghost" disabled={!activeJob} onClick={() => activeJob && loadHrImportPreview(activeJob.id).then((preview) => { setActiveJob(preview.job); setRows(preview.rows); setMessage("Dry-run preview refreshed."); }).catch((previewError) => setError(previewError instanceof Error ? previewError.message : "Failed to refresh preview"))}>
               Refresh dry-run preview
             </button>
-            <button type="button" className="admin-button" disabled={!activeJob || errors > 0 || processing} onClick={handleProcess}>
+            <button type="button" className="admin-button" disabled={!canProcess} onClick={handleProcess}>
               {processing ? "Processing..." : "Process valid rows"}
             </button>
           </div>
+          {activationDeliveries.length > 0 ? (
+            <div className="admin-delivery-summary">
+              <strong>Activation delivery</strong>
+              {activationDeliveries.slice(0, 3).map((delivery) => (
+                <p key={delivery.userId}>
+                  <span className={`admin-badge admin-badge--${delivery.status === "failed" || delivery.status === "not_configured" ? "danger" : delivery.status === "queued" ? "warning" : "success"}`}>
+                    {delivery.status}
+                  </span>{" "}
+                  {delivery.channel} {delivery.destination ? `to ${delivery.destination}` : ""} - {delivery.message}
+                </p>
+              ))}
+            </div>
+          ) : null}
         </article>
 
         <article className="admin-panel admin-panel--wide admin-panel--table">
           <div className="admin-panel__header">
             <div>
               <h2>Import preview</h2>
-              <p>Row-level outcomes show errors, warnings, duplicate handling, and mapped role assignment.</p>
+              <p>Review exactly who will be created, skipped, or blocked before provisioning.</p>
             </div>
             <span className="admin-badge admin-badge--warning">Dry-run</span>
           </div>
