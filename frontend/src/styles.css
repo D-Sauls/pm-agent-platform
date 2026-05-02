@@ -259,6 +259,15 @@ a {
   gap: 0.4rem;
 }
 
+.auth-step-note {
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--info) 24%, var(--border));
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--info) 8%, var(--surface-elevated));
+  color: var(--text);
+  font-weight: 800;
+}
 .auth-copy--hero {
   margin-top: 0.5rem;
 }
@@ -963,11 +972,13 @@ a {
 .admin-risk-summary,
 .admin-risk-stack,
 .admin-import-decision,
-.admin-delivery-summary {
+.admin-delivery-summary,
+.next-step-kicker {
   display: flex;
   gap: 0.75rem;
 }
 
+.next-step-kicker,
 .admin-risk-summary {
   align-items: center;
   justify-content: space-between;

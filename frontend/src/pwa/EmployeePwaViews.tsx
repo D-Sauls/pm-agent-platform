@@ -103,6 +103,7 @@ export function AuthScreen(props: {
 
         {props.authMode === "login" ? (
           <form className="auth-form" onSubmit={handleLoginSubmit}>
+            <p className="auth-step-note">Use the employee ID from your invite. No internal details are needed.</p>
             <label className="field-group">
               <span>Employee ID</span>
               <input
@@ -129,11 +130,12 @@ export function AuthScreen(props: {
                 Reset password
               </a>
             ) : (
-              <p className="helper-text">If you received an activation link first, use Activate account to set your password.</p>
+              <p className="helper-text">First time here? Open Activate account and set your password once.</p>
             )}
           </form>
         ) : (
           <form className="auth-form" onSubmit={handleActivationSubmit}>
+            <p className="auth-step-note">Paste the token from your activation link, create a password, then continue to onboarding.</p>
             <label className="field-group">
               <span>Activation token</span>
               <input
@@ -207,16 +209,22 @@ export function HomeTabView(props: {
       </section>
 
       <section className="detail-card detail-card--accent">
-        <p className="eyebrow">Next step</p>
+        <div className="next-step-kicker">
+          <p className="eyebrow">Do this now</p>
+          <MetaBadge tone={props.overdueCount > 0 ? "danger" : "info"}>
+            {props.overdueCount > 0 ? "Overdue first" : "Next best action"}
+          </MetaBadge>
+        </div>
         <h3>{props.nextStepTitle}</h3>
         <p>{props.nextStepDescription}</p>
+        <p className="helper-text">Completing this moves your onboarding forward and updates your status automatically.</p>
         <div className="progress-row">
           <strong>{props.completionPercent}% complete</strong>
           <span>{props.pendingItems.length} pending item{props.pendingItems.length === 1 ? "" : "s"}</span>
         </div>
         <ProgressBar value={props.completionPercent} />
         <button type="button" className="primary-button" onClick={props.onContinue}>
-          Continue assigned work
+          Open next step
         </button>
       </section>
 
@@ -374,7 +382,7 @@ export function CourseDetailView(props: {
                   onClick={() => props.onOpenLesson(lesson.id)}
                 >
                   <span>{lesson.title}</span>
-                  <small>{lesson.contentType} · {lesson.estimatedDuration} min</small>
+                  <small>{lesson.contentType} Â· {lesson.estimatedDuration} min</small>
                 </button>
               );
             })}
