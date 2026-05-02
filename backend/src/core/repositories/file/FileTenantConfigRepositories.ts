@@ -43,6 +43,20 @@ function reviveState(state: Partial<TenantConfigState>): TenantConfigState {
   };
 }
 
+function durableWriteJson(filePath: string, value: unknown): void {
+  const tempPath = `${filePath}.${process.pid}.${process.hrtime.bigint()}.tmp`;
+  const contents = JSON.stringify(value, null, 2);
+  fs.writeFileSync(tempPath, contents, "utf8");
+  try {
+    fs.renameSync(tempPath, filePath);
+  } catch {
+    // OneDrive/Windows can transiently lock the target during rename. Keep the
+    // store usable instead of failing tenant/config writes during validation.
+    fs.rmSync(tempPath, { force: true });
+    fs.writeFileSync(filePath, contents, "utf8");
+  }
+}
+
 export class FileTenantConfigStore {
   constructor(private readonly filePath: string) {
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -64,9 +78,7 @@ export class FileTenantConfigStore {
   }
 
   write(state: TenantConfigState): void {
-    const tempPath = `${this.filePath}.${process.pid}.${process.hrtime.bigint()}.tmp`;
-    fs.writeFileSync(tempPath, JSON.stringify(state, null, 2), "utf8");
-    fs.renameSync(tempPath, this.filePath);
+    durableWriteJson(this.filePath, state);
   }
 }
 

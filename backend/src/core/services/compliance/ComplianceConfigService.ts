@@ -13,6 +13,18 @@ const defaultComplianceConfig: ComplianceConfig = {
   allowedIpRanges: []
 };
 
+function durableWriteJson(filePath: string, value: unknown): void {
+  const tempPath = `${filePath}.${process.pid}.${process.hrtime.bigint()}.tmp`;
+  const contents = JSON.stringify(value, null, 2);
+  fs.writeFileSync(tempPath, contents, "utf8");
+  try {
+    fs.renameSync(tempPath, filePath);
+  } catch {
+    fs.rmSync(tempPath, { force: true });
+    fs.writeFileSync(filePath, contents, "utf8");
+  }
+}
+
 export class ComplianceConfigService {
   private readonly configs = new Map<string, ComplianceConfig>();
 
@@ -60,8 +72,6 @@ export class ComplianceConfigService {
       }
       return;
     }
-    const tempPath = `${this.filePath}.${process.pid}.${process.hrtime.bigint()}.tmp`;
-    fs.writeFileSync(tempPath, JSON.stringify(configs, null, 2), "utf8");
-    fs.renameSync(tempPath, this.filePath);
+    durableWriteJson(this.filePath, configs);
   }
 }
