@@ -152,7 +152,16 @@ export function EmployeeCompliancePage({ onOpenEmployee }: EmployeeCompliancePag
                   <strong>{previewEmployee.onboardingProgress}%</strong>
                   <span>Onboarding progress</span>
                 </div>
-                <div className="admin-progress-bar"><span style={{ width: `${previewEmployee.onboardingProgress}%` }} /></div>
+                <div
+                  className="admin-progress-bar"
+                  role="progressbar"
+                  aria-label={`${previewEmployee.onboardingProgress}% onboarding progress`}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={previewEmployee.onboardingProgress}
+                >
+                  <span style={{ width: `${previewEmployee.onboardingProgress}%` }} />
+                </div>
               </div>
               <dl className="admin-detail-list">
                 <div>

@@ -382,7 +382,7 @@ export function CourseDetailView(props: {
                   onClick={() => props.onOpenLesson(lesson.id)}
                 >
                   <span>{lesson.title}</span>
-                  <small>{lesson.contentType} · {lesson.estimatedDuration} min</small>
+                  <small>{lesson.contentType} - {lesson.estimatedDuration} min</small>
                 </button>
               );
             })}
@@ -497,7 +497,12 @@ export function PolicyDetailView(props: {
         <div className="acknowledgement-box">
           <strong>You are acknowledging {props.currentVersionLabel}</strong>
           <label className="checkbox-row">
-            <input type="checkbox" checked={props.checked} onChange={(event) => props.onCheckedChange(event.target.checked)} />
+            <input
+              type="checkbox"
+              checked={props.checked}
+              aria-label={`Acknowledge ${props.policy.title}`}
+              onChange={(event) => props.onCheckedChange(event.target.checked)}
+            />
             <span>I have reviewed this policy and understand that my acknowledgement applies to the current published version.</span>
           </label>
           <button type="button" className="primary-button" disabled={!props.checked} onClick={props.onAcknowledge}>
@@ -607,6 +612,7 @@ export function ThemeToggle(props: { value: ThemeMode; onChange: (mode: ThemeMod
           key={mode}
           type="button"
           className={props.value === mode ? "theme-toggle__item theme-toggle__item--active" : "theme-toggle__item"}
+          aria-pressed={props.value === mode}
           onClick={() => props.onChange(mode)}
         >
           {mode}
@@ -671,9 +677,17 @@ function StatusChip(props: { status: "completed" | "pending" | "overdue"; childr
 }
 
 function ProgressBar(props: { value: number }) {
+  const value = Math.max(0, Math.min(100, Math.round(props.value)));
   return (
-    <div className="progress-bar" aria-label={`${Math.round(props.value)}% complete`}>
-      <span style={{ width: `${Math.max(0, Math.min(100, props.value))}%` }} />
+    <div
+      className="progress-bar"
+      role="progressbar"
+      aria-label={`${value}% complete`}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={value}
+    >
+      <span style={{ width: `${value}%` }} />
     </div>
   );
 }

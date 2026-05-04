@@ -25,9 +25,12 @@ export type OfflineAvailability = {
 };
 
 export function useOnlineStatus(): boolean {
-  const [online, setOnline] = useState(navigator.onLine);
+  const [online, setOnline] = useState(() => (typeof navigator === "undefined" ? true : navigator.onLine));
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
     const onOnline = () => setOnline(true);
     const onOffline = () => setOnline(false);
     window.addEventListener("online", onOnline);
@@ -42,6 +45,9 @@ export function useOnlineStatus(): boolean {
 }
 
 export function readActivationToken(): string {
+  if (typeof window === "undefined") {
+    return "";
+  }
   const params = new URLSearchParams(window.location.search);
   return params.get("activationToken") ?? params.get("token") ?? "";
 }

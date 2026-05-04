@@ -11,7 +11,11 @@ function resolveStorage(storage?: StorageLike): StorageLike | null {
   if (typeof window === "undefined") {
     return null;
   }
-  return window.localStorage;
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
 }
 
 export function loadEmployeeSession(storage?: StorageLike): EmployeeSession | null {
@@ -20,8 +24,12 @@ export function loadEmployeeSession(storage?: StorageLike): EmployeeSession | nu
     return null;
   }
 
-  const raw = target.getItem(EMPLOYEE_SESSION_KEY);
-  return raw ? (JSON.parse(raw) as EmployeeSession) : null;
+  try {
+    const raw = target.getItem(EMPLOYEE_SESSION_KEY);
+    return raw ? (JSON.parse(raw) as EmployeeSession) : null;
+  } catch {
+    return null;
+  }
 }
 
 export function saveEmployeeSession(session: EmployeeSession, storage?: StorageLike): void {
@@ -29,7 +37,11 @@ export function saveEmployeeSession(session: EmployeeSession, storage?: StorageL
   if (!target) {
     return;
   }
-  target.setItem(EMPLOYEE_SESSION_KEY, JSON.stringify(session));
+  try {
+    target.setItem(EMPLOYEE_SESSION_KEY, JSON.stringify(session));
+  } catch {
+    // Browser storage can be blocked in private or embedded contexts.
+  }
 }
 
 export function clearEmployeeSession(storage?: StorageLike): void {
@@ -37,7 +49,11 @@ export function clearEmployeeSession(storage?: StorageLike): void {
   if (!target) {
     return;
   }
-  target.removeItem(EMPLOYEE_SESSION_KEY);
+  try {
+    target.removeItem(EMPLOYEE_SESSION_KEY);
+  } catch {
+    // Logout should still proceed if browser storage is unavailable.
+  }
 }
 
 export function hasEmployeeSession(session: EmployeeSession | null): session is EmployeeSession {

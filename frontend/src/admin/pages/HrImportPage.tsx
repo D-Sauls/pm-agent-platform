@@ -154,7 +154,7 @@ export function HrImportPage() {
           <div className="admin-upload-box">
             <strong>{selectedFile ? selectedFile.name : "Choose HR spreadsheet"}</strong>
             <span>Nothing is provisioned until you review the preview and press Process valid rows.</span>
-            <input type="file" accept=".csv,.xlsx" onChange={handleFileChange} />
+            <input type="file" accept=".csv,.xlsx" aria-label="Upload HR spreadsheet" onChange={handleFileChange} />
             <button type="button" className="admin-button admin-button--ghost" disabled={!selectedFile || uploading} onClick={handleUpload}>
               {uploading ? "Uploading..." : "Upload and preview"}
             </button>

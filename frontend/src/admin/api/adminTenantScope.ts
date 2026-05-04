@@ -11,20 +11,28 @@ export interface AdminTenantOption {
 }
 
 export function getAdminTenantId(): string {
-  if (typeof window === "undefined" || !window.localStorage) {
+  if (typeof window === "undefined") {
     return defaultTenantId();
   }
-  return window.localStorage.getItem(ADMIN_TENANT_SCOPE_KEY) ?? defaultTenantId();
+  try {
+    return window.localStorage?.getItem(ADMIN_TENANT_SCOPE_KEY) ?? defaultTenantId();
+  } catch {
+    return defaultTenantId();
+  }
 }
 
 export function setAdminTenantId(tenantId: string): void {
-  if (typeof window === "undefined" || !window.localStorage) {
+  if (typeof window === "undefined") {
     return;
   }
-  if (tenantId) {
-    window.localStorage.setItem(ADMIN_TENANT_SCOPE_KEY, tenantId);
-  } else {
-    window.localStorage.removeItem(ADMIN_TENANT_SCOPE_KEY);
+  try {
+    if (tenantId) {
+      window.localStorage?.setItem(ADMIN_TENANT_SCOPE_KEY, tenantId);
+    } else {
+      window.localStorage?.removeItem(ADMIN_TENANT_SCOPE_KEY);
+    }
+  } catch {
+    // Tenant selection should keep working even when browser storage is blocked.
   }
 }
 

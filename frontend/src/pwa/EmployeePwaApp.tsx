@@ -312,6 +312,7 @@ export function EmployeePwaApp() {
               key={item.key}
               type="button"
               className={tab === item.key ? "bottom-nav__item bottom-nav__item--active" : "bottom-nav__item"}
+              aria-current={tab === item.key ? "page" : undefined}
               onClick={() => {
                 setTab(item.key);
                 if (item.key !== "training") {

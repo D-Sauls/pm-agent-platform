@@ -79,6 +79,7 @@ export function AdminLayout({
               type="button"
               onClick={() => onNavigate(item.key)}
               className={isActiveNav(currentPage, item.key) ? "admin-shell__nav admin-shell__nav--active" : "admin-shell__nav"}
+              aria-current={isActiveNav(currentPage, item.key) ? "page" : undefined}
             >
               <span>{item.label}</span>
               <small>{item.description}</small>

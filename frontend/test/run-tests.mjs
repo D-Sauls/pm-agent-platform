@@ -58,8 +58,38 @@ assert.equal(toEmployeeSessionAccess(loadEmployeeSession(mockStorage)).sessionTo
 clearEmployeeSession(mockStorage);
 assert.equal(loadEmployeeSession(mockStorage), null);
 
+const throwingStorage = {
+  getItem() {
+    throw new Error("storage blocked");
+  },
+  setItem() {
+    throw new Error("storage blocked");
+  },
+  removeItem() {
+    throw new Error("storage blocked");
+  }
+};
+
+assert.equal(loadEmployeeSession(throwingStorage), null);
+assert.doesNotThrow(() =>
+  saveEmployeeSession(
+    {
+      userId: "user-1",
+      tenantId: "tenant-acme",
+      username: "A100",
+      displayName: "Alex User",
+      role: "Finance Analyst",
+      department: "Finance",
+      sessionToken: "token-123"
+    },
+    throwingStorage
+  )
+);
+assert.doesNotThrow(() => clearEmployeeSession(throwingStorage));
+
 const adminAppSource = fs.readFileSync(new URL("../src/admin/AdminApp.tsx", import.meta.url), "utf8");
 const adminLayoutSource = fs.readFileSync(new URL("../src/admin/components/AdminLayout.tsx", import.meta.url), "utf8");
+const adminTenantScopeSource = fs.readFileSync(new URL("../src/admin/api/adminTenantScope.ts", import.meta.url), "utf8");
 assert.match(adminAppSource, /EmployeeCompliancePage/);
 assert.match(adminAppSource, /HrImportPage/);
 assert.match(adminAppSource, /ContentManagementPage/);
@@ -68,7 +98,11 @@ assert.doesNotMatch(adminAppSource, /TenantDetailPage|LicenseManagementPage|Feat
 assert.match(adminLayoutSource, /HR Import/);
 assert.match(adminLayoutSource, /Content/);
 assert.match(adminLayoutSource, /Settings/);
+assert.match(adminLayoutSource, /aria-current/);
+assert.match(adminTenantScopeSource, /try \{/);
+assert.match(adminTenantScopeSource, /catch \{/);
 const employeeViewsSource = fs.readFileSync(new URL("../src/pwa/EmployeePwaViews.tsx", import.meta.url), "utf8");
+const employeeWorkspaceDataSource = fs.readFileSync(new URL("../src/pwa/useEmployeeWorkspaceData.ts", import.meta.url), "utf8");
 const authSource = employeeViewsSource.slice(
   employeeViewsSource.indexOf("export function AuthScreen"),
   employeeViewsSource.indexOf("export function HomeTabView")
@@ -77,6 +111,11 @@ assert.match(authSource, /Employee ID/);
 assert.match(authSource, /Password/);
 assert.doesNotMatch(authSource, /tenantId|userId|department|debug|roleName/i);
 assert.doesNotMatch(authSource, />\s*Role\s*</i);
+assert.doesNotMatch(employeeViewsSource, /Â/);
+assert.match(employeeViewsSource, /role="progressbar"/);
+assert.match(employeeViewsSource, /aria-pressed/);
+assert.match(employeeViewsSource, /aria-label=\{`Acknowledge/);
+assert.match(employeeWorkspaceDataSource, /session\?\.tenantId \?\? runtime\.tenantId/);
 
 const courseDetailSource = employeeViewsSource.slice(
   employeeViewsSource.indexOf("export function CourseDetailView"),

@@ -47,7 +47,7 @@ export function useEmployeeWorkspaceData(input: {
   runtime: TenantRuntime;
 }) {
   const { session, runtime } = input;
-  const storageScope = runtime.tenantId;
+  const storageScope = session?.tenantId ?? runtime.tenantId;
   const online = useOnlineStatus();
   const [branding, setBranding] = useState<TenantBranding>(() => resolveTenantBranding(runtime.tenantId));
   const [courses, setCourses] = useState<EmployeeCourse[]>([]);
