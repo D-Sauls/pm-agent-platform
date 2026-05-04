@@ -8,6 +8,8 @@ test("loadEnvConfig resolves deployment-focused environment variables", () => {
     NODE_ENV: "production",
     PORT: "8080",
     DATABASE_URL: "postgres://onboarding-db",
+    PERSISTENCE_DRIVER: "postgres",
+    DATABASE_SSL: "true",
     KEYVAULT_URI: "https://onboarding-kv.vault.azure.net",
     TEAMS_APP_ID: "teams-app-id",
     TEAMS_BOT_APP_ID: "teams-bot-app-id",
@@ -21,6 +23,8 @@ test("loadEnvConfig resolves deployment-focused environment variables", () => {
   assert.equal(config.nodeEnv, "production");
   assert.equal(config.port, 8080);
   assert.equal(config.databaseUrl, "postgres://onboarding-db");
+  assert.equal(config.persistenceDriver, "postgres");
+  assert.equal(config.databaseSsl, true);
   assert.equal(config.keyVaultUri, "https://onboarding-kv.vault.azure.net");
   assert.equal(config.teamsAppId, "teams-app-id");
   assert.equal(config.teamsBotAppId, "teams-bot-app-id");
@@ -35,6 +39,8 @@ test("loadEnvConfig applies safe local defaults", () => {
 
   assert.equal(config.appEnv, "local");
   assert.equal(config.databaseUrl, "file:./data/onboarding-local.db");
+  assert.equal(config.persistenceDriver, "");
+  assert.equal(config.databaseSsl, false);
   assert.equal(config.keyVaultUri, "");
   assert.equal(config.teamsAppId, "00000000-0000-0000-0000-000000000001");
   assert.equal(config.licenseSecret, "local-dev-license-secret");

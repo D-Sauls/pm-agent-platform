@@ -2,14 +2,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { env } from "../../config/env.js";
-
-export interface DatabaseRuntimeInfo {
-  driver: "sqlite";
-  databaseUrlConfigured: boolean;
-  databasePath: string;
-  productionReady: boolean;
-  warnings: string[];
-}
+import {
+  createDatabaseRuntimeInfo,
+  detectDatabaseDriver,
+  type DatabaseRuntimeInfo
+} from "./DatabaseRuntime.js";
 
 const migrations = [
   {
@@ -51,8 +48,12 @@ CREATE INDEX IF NOT EXISTS idx_append_events_scope_tenant
 function resolveDatabasePath(databaseUrl: string): string {
   const fallback = `file:${path.join(env.platformDataDir, "onboarding-local.db")}`;
   const url = databaseUrl || fallback;
-  if (!url.startsWith("file:")) {
-    throw new Error(`Unsupported DATABASE_URL for this runtime: ${url}. Use file:./path/to/database.db.`);
+  const driver = detectDatabaseDriver(url, env.persistenceDriver);
+  if (driver !== "sqlite" || !url.startsWith("file:")) {
+    throw new Error(
+      `DATABASE_URL uses ${driver}, but the active onboarding runtime is still wired to the SQLite-backed synchronous repository adapter. ` +
+        "Use PERSISTENCE_DRIVER=sqlite with file:./path/to/database.db for local/controlled validation, or complete the async repository switch before enabling PostgreSQL at runtime."
+    );
   }
   let rawPath = url.slice("file:".length);
   if (process.env.NODE_TEST_CONTEXT && !process.env.DATABASE_URL) {
@@ -74,23 +75,15 @@ export class SqliteAppDatabase {
   static fromEnv(): { database: SqliteAppDatabase; info: DatabaseRuntimeInfo } {
     const databasePath = resolveDatabasePath(env.databaseUrl);
     const databaseUrlConfigured = Boolean(env.databaseUrl);
-    const warnings: string[] = [];
-    if (env.appEnv === "production" && !databaseUrlConfigured) {
-      warnings.push("DATABASE_URL is required in production. The runtime is using a local fallback database.");
-    }
-    if (env.appEnv === "production" && env.databaseUrl.startsWith("file:")) {
-      warnings.push("SQLite file persistence is suitable for local pilots only; use a managed production database before scale rollout.");
-    }
     const database = new SqliteAppDatabase(databasePath);
     return {
       database,
-      info: {
-        driver: "sqlite",
+      info: createDatabaseRuntimeInfo({
+        env,
         databaseUrlConfigured,
         databasePath,
-        productionReady: env.appEnv !== "production" ? true : databaseUrlConfigured && !env.databaseUrl.startsWith("file:"),
-        warnings
-      }
+        adapterReady: false
+      })
     };
   }
 
