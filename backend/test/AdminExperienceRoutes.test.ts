@@ -52,6 +52,13 @@ test("admin experience APIs expose onboarding/compliance data after HR import", 
       body: JSON.stringify({ tenantId: "tenant-acme" })
     });
     assert.equal(process.status, 200);
+    const processBody = (await process.json()) as {
+      activationDeliveries: Array<{ userId: string; status: string; channel: string; destination?: string | null }>;
+    };
+    assert.equal(processBody.activationDeliveries.length, 1);
+    assert.equal(processBody.activationDeliveries[0]?.status, "delivered");
+    assert.equal(processBody.activationDeliveries[0]?.channel, "log");
+    assert.match(processBody.activationDeliveries[0]?.destination ?? "", /em\*\*\*\*@example\.com/);
 
     const dashboard = await fetch(`${base}/api/admin/experience/dashboard?tenantId=tenant-acme`, { headers });
     assert.equal(dashboard.status, 200);
@@ -60,16 +67,30 @@ test("admin experience APIs expose onboarding/compliance data after HR import", 
 
     const employees = await fetch(`${base}/api/admin/experience/employees?tenantId=tenant-acme`, { headers });
     assert.equal(employees.status, 200);
-    const employeesBody = (await employees.json()) as { employees: Array<{ id: string; employeeCode: string }> };
+    const employeesBody = (await employees.json()) as {
+      employees: Array<{ id: string; employeeCode: string; activationDeliveryStatus?: string | null; activationDeliveryChannel?: string | null }>;
+    };
     const importedEmployee = employeesBody.employees.find((employee) => employee.employeeCode === employeeCode);
     assert.ok(importedEmployee);
+    assert.equal(importedEmployee.activationDeliveryStatus, "delivered");
+    assert.equal(importedEmployee.activationDeliveryChannel, "log");
 
     const detail = await fetch(`${base}/api/admin/experience/employees/${importedEmployee.id}?tenantId=tenant-acme`, { headers });
     assert.equal(detail.status, 200);
-    const detailBody = (await detail.json()) as { employee: { assignedPolicies: Array<{ id: string }>; acknowledgementTimeline: unknown[]; auditLog: unknown[] } };
+    const detailBody = (await detail.json()) as {
+      employee: {
+        assignedPolicies: Array<{ id: string }>;
+        acknowledgementTimeline: unknown[];
+        auditLog: unknown[];
+        activationDeliveries: Array<{ status: string; channel: string; destination?: string | null; message?: string }>;
+      };
+    };
     assert.ok(Array.isArray(detailBody.employee.assignedPolicies));
     assert.ok(Array.isArray(detailBody.employee.acknowledgementTimeline));
     assert.ok(Array.isArray(detailBody.employee.auditLog));
+    assert.equal(detailBody.employee.activationDeliveries[0]?.status, "delivered");
+    assert.equal(detailBody.employee.activationDeliveries[0]?.channel, "log");
+    assert.match(detailBody.employee.activationDeliveries[0]?.destination ?? "", /em\*\*\*\*@example\.com/);
 
     const overrideSubjectId = detailBody.employee.assignedPolicies[0]?.id ?? "policy-finance-controls";
     const override = await fetch(`${base}/api/admin/experience/employees/${importedEmployee.id}/overrides`, {

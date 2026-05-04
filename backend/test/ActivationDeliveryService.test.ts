@@ -74,10 +74,15 @@ test("activation delivery sends through SendGrid provider and records queued res
   const provisioning = new UserProvisioningService(repositories.hrImportRepository);
   const activation = provisioning.provision("tenant-delivery", validRow("EMP-2"), defaultProvisioningConfig);
   const originalFetch = globalThis.fetch;
+  const originalLog = console.log;
+  const logs: string[] = [];
   globalThis.fetch = (async (_url, init) => {
     assert.equal((init?.headers as Record<string, string>).Authorization, "Bearer test-key");
     return new Response(null, { status: 202 });
   }) as typeof fetch;
+  console.log = (...args: unknown[]) => {
+    logs.push(args.map((arg) => (typeof arg === "string" ? arg : JSON.stringify(arg))).join(" "));
+  };
 
   try {
     const outcome = await withEnv(
@@ -87,13 +92,23 @@ test("activation delivery sends through SendGrid provider and records queued res
         sendGridApiKey: "test-key",
         activationSenderEmail: "no-reply@example.com"
       },
-      () => new ActivationDeliveryService(repositories.hrImportRepository).deliver(activation)
+      () =>
+        new ActivationDeliveryService(repositories.hrImportRepository).deliver({
+          ...activation,
+          correlationId: "activation-readiness-test"
+        })
     );
     assert.equal(outcome.status, "queued");
     assert.equal(outcome.channel, "email");
-    assert.equal(repositories.hrImportRepository.listActivationDeliveryAttempts("tenant-delivery", activation.user.id)[0]?.provider, "sendgrid");
+    const attempt = repositories.hrImportRepository.listActivationDeliveryAttempts("tenant-delivery", activation.user.id)[0];
+    assert.equal(attempt?.provider, "sendgrid");
+    assert.equal(attempt?.destination, "em****@example.com");
+    assert.equal(attempt?.correlationId, "activation-readiness-test");
+    assert.doesNotMatch(logs.join("\n"), /test-key|activationToken=/);
+    assert.match(logs.join("\n"), /em\*\*\*\*@example\.com/);
   } finally {
     globalThis.fetch = originalFetch;
+    console.log = originalLog;
     db.close();
     fs.rmSync(filePath, { force: true });
   }
@@ -123,6 +138,20 @@ test("activation delivery records provider failure", async () => {
     const attempt = repositories.hrImportRepository.listActivationDeliveryAttempts("tenant-delivery", activation.user.id)[0];
     assert.equal(attempt?.errorMessage, "HTTP 500");
     assert.ok(attempt?.failedAt);
+
+    await withEnv(
+      {
+        activationDeliveryMode: "email",
+        activationEmailProvider: "sendgrid",
+        sendGridApiKey: "test-key",
+        activationSenderEmail: "no-reply@example.com"
+      },
+      () => new ActivationDeliveryService(repositories.hrImportRepository).deliver(activation)
+    );
+    const failedAttempts = repositories.hrImportRepository
+      .listActivationDeliveryAttempts("tenant-delivery", activation.user.id)
+      .filter((record) => record.status === "failed");
+    assert.equal(failedAttempts.length, 2);
   } finally {
     globalThis.fetch = originalFetch;
     db.close();
@@ -177,6 +206,26 @@ test("resend activation invalidates old token and records new delivery attempt",
   const activated = provisioning.completeActivation({ token: resent.oneTimeSecret, password: "Password123" });
   assert.equal(activated.user.accountStatus, "active");
   assert.equal(repositories.hrImportRepository.listActivationDeliveryAttempts("tenant-delivery", initial.user.id).length, 1);
+
+  db.close();
+  fs.rmSync(filePath, { force: true });
+});
+
+test("expired activation token is rejected", () => {
+  const filePath = testDatabasePath("activation-expired-token");
+  fs.rmSync(filePath, { force: true });
+  const db = new SqliteAppDatabase(filePath);
+  const repositories = createDatabaseRepositories(db);
+  const provisioning = new UserProvisioningService(repositories.hrImportRepository);
+  const activation = provisioning.provision("tenant-delivery", validRow("EMP-6"), {
+    ...defaultProvisioningConfig,
+    activationTtlHours: -1
+  });
+
+  assert.throws(
+    () => provisioning.completeActivation({ token: activation.oneTimeSecret!, password: "Password123" }),
+    /expired/
+  );
 
   db.close();
   fs.rmSync(filePath, { force: true });
