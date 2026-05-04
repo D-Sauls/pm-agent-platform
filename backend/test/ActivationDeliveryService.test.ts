@@ -130,6 +130,37 @@ test("activation delivery records provider failure", async () => {
   }
 });
 
+test("production activation email delivery blocks unverified SendGrid sender setup", async () => {
+  const filePath = testDatabasePath("activation-sendgrid-readiness");
+  fs.rmSync(filePath, { force: true });
+  const db = new SqliteAppDatabase(filePath);
+  const repositories = createDatabaseRepositories(db);
+  const provisioning = new UserProvisioningService(repositories.hrImportRepository);
+  const activation = provisioning.provision("tenant-delivery", validRow("EMP-5"), defaultProvisioningConfig);
+
+  try {
+    const outcome = await withEnv(
+      {
+        appEnv: "production",
+        activationDeliveryMode: "email",
+        activationEmailProvider: "sendgrid",
+        activationBaseUrl: "https://onboarding.example.com/activate",
+        sendGridApiKey: "test-key",
+        activationSenderEmail: "no-reply@example.com",
+        sendGridSenderVerified: false
+      },
+      () => new ActivationDeliveryService(repositories.hrImportRepository).deliver(activation)
+    );
+    assert.equal(outcome.status, "not_configured");
+    assert.match(outcome.message, /SENDGRID_SENDER_VERIFIED/);
+    const attempt = repositories.hrImportRepository.listActivationDeliveryAttempts("tenant-delivery", activation.user.id)[0];
+    assert.equal(attempt?.status, "not_configured");
+  } finally {
+    db.close();
+    fs.rmSync(filePath, { force: true });
+  }
+});
+
 test("resend activation invalidates old token and records new delivery attempt", async () => {
   const filePath = testDatabasePath("activation-resend");
   fs.rmSync(filePath, { force: true });

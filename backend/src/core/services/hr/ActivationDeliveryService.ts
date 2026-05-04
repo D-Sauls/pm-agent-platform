@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { env } from "../../../config/env.js";
 import { loggingService } from "../../../observability/runtime.js";
+import { activationDeliveryReadiness } from "./ActivationDeliveryReadiness.js";
 import type {
   ActivationDeliveryAttempt,
   ActivationDeliveryProvider,
@@ -184,6 +185,17 @@ export class ActivationDeliveryService {
     temporaryPassword: string | undefined,
     createdAt: Date
   ): Promise<ActivationDeliveryOutcome> {
+    const readiness = activationDeliveryReadiness(env);
+    if (env.appEnv === "production" && !readiness.ready) {
+      return this.record(input, {
+        status: "not_configured",
+        channel: "email",
+        provider: "sendgrid",
+        destination: maskDestination(destination),
+        message: `Activation email delivery is not production-ready: ${readiness.warnings.join(" ")}`
+      }, createdAt);
+    }
+
     if (!input.user.workEmail) {
       return this.record(input, {
         status: "failed",

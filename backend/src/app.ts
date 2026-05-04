@@ -2,6 +2,7 @@ import cors from "cors";
 import express from "express";
 import { env } from "./config/env.js";
 import { persistenceRuntimeInfo, repositories } from "./core/container.js";
+import { activationDeliveryReadiness } from "./core/services/hr/ActivationDeliveryReadiness.js";
 import { errorHandlerMiddleware } from "./core/middleware/ErrorHandlerMiddleware.js";
 import { authenticateUser } from "./middleware/AuthMiddleware.js";
 import { tenantMiddleware } from "./middleware/TenantMiddleware.js";
@@ -27,9 +28,11 @@ export function createApp() {
     "assistant telemetry",
     "legacy PM/time repositories are retained only for retired route compatibility"
   ];
+  const activationReadiness = activationDeliveryReadiness(env);
   healthService.setStorageReadyProbe(
     () =>
       Object.keys(repositories).length > 0 &&
+      (env.appEnv === "production" ? activationReadiness.ready : true) &&
       (env.appEnv === "production"
         ? persistenceRuntimeInfo.productionReady
         : persistenceRuntimeInfo.productionReady || env.allowVolatileRuntimeState)
@@ -37,6 +40,7 @@ export function createApp() {
   healthService.setRuntimeRiskProbe(() =>
     [
       ...persistenceRuntimeInfo.warnings,
+      ...activationReadiness.warnings,
       ...(env.appEnv === "production"
         ? [`Remaining volatile runtime stores must be resolved before production: ${volatileRuntimeStores.join(", ")}.`]
         : [])

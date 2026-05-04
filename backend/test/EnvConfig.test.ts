@@ -16,7 +16,8 @@ test("loadEnvConfig resolves deployment-focused environment variables", () => {
     TEAMS_APP_DOMAIN: "onboarding.example.com",
     BOT_ENDPOINT: "https://onboarding.example.com/api/teams/messages",
     LICENSE_SECRET: "license-secret",
-    LOG_LEVEL: "warn"
+    LOG_LEVEL: "warn",
+    SENDGRID_SENDER_VERIFIED: "true"
   });
 
   assert.equal(config.appEnv, "staging");
@@ -32,6 +33,7 @@ test("loadEnvConfig resolves deployment-focused environment variables", () => {
   assert.equal(config.botEndpoint, "https://onboarding.example.com/api/teams/messages");
   assert.equal(config.licenseSecret, "license-secret");
   assert.equal(config.logLevel, "warn");
+  assert.equal(config.sendGridSenderVerified, true);
 });
 
 test("loadEnvConfig applies safe local defaults", () => {
@@ -41,6 +43,7 @@ test("loadEnvConfig applies safe local defaults", () => {
   assert.equal(config.databaseUrl, "file:./data/onboarding-local.db");
   assert.equal(config.persistenceDriver, "");
   assert.equal(config.databaseSsl, false);
+  assert.equal(config.sendGridSenderVerified, false);
   assert.equal(config.keyVaultUri, "");
   assert.equal(config.teamsAppId, "00000000-0000-0000-0000-000000000001");
   assert.equal(config.licenseSecret, "local-dev-license-secret");
