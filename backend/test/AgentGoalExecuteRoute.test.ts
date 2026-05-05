@@ -6,7 +6,7 @@ import { employeeSessionService } from "../src/core/services/auth/EmployeeSessio
 function sessionToken(): string {
   return employeeSessionService.issueSession({
     userId: "assistant-test-user",
-    tenantId: "tenant-acme",
+    tenantId: "tenant-beta",
     role: "employee",
     employeeCode: "A-100",
     department: "Finance",
@@ -29,10 +29,10 @@ test("POST /api/agent/goal-execute returns bounded agentic response", async () =
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${sessionToken()}`,
-        "x-tenant-id": "tenant-acme"
+        "x-tenant-id": "tenant-beta"
       },
       body: JSON.stringify({
-        tenantId: "tenant-acme",
+        tenantId: "tenant-beta",
         message: "What should I do next for onboarding and compliance?"
       })
     });
@@ -67,10 +67,10 @@ test("POST /api/agent/goal-execute returns structured error for unsupported ambi
         "Content-Type": "application/json",
         "x-request-id": "goal-fail-1",
         Authorization: `Bearer ${sessionToken()}`,
-        "x-tenant-id": "tenant-acme"
+        "x-tenant-id": "tenant-beta"
       },
       body: JSON.stringify({
-        tenantId: "tenant-acme",
+        tenantId: "tenant-beta",
         message: "?"
       })
     });
