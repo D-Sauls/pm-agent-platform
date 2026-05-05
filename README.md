@@ -10,6 +10,12 @@ Enterprise-ready TypeScript platform for multi-tenant employee onboarding, learn
 - `docs/`: Deployment and platform audit documentation.
 - `data/`: Local persistent development data stores.
 
+
+## Cloud Development
+- Cloud workspace guide: [docs/CLOUD_DEVELOPMENT.md](./docs/CLOUD_DEVELOPMENT.md)
+- Supports GitHub Codespaces / VS Code Dev Containers with Node.js 24 and PostgreSQL 16.
+- Use this to work from the cloud instead of relying on local OneDrive files or a local database.
+
 ## Admin Control Plane (Local Run)
 1. Start backend:
    - `npm run dev -w backend`

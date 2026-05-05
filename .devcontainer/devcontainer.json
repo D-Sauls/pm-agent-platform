@@ -1,0 +1,39 @@
+{
+  "name": "Onboarding Platform Cloud Workspace",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/pwa-onboarding",
+  "features": {
+    "ghcr.io/devcontainers/features/azure-cli:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "forwardPorts": [4000, 5173, 5432],
+  "portsAttributes": {
+    "4000": {
+      "label": "Backend API",
+      "onAutoForward": "notify"
+    },
+    "5173": {
+      "label": "Frontend PWA/Admin",
+      "onAutoForward": "openPreview"
+    },
+    "5432": {
+      "label": "Cloud Dev PostgreSQL",
+      "onAutoForward": "silent"
+    }
+  },
+  "postCreateCommand": "npm ci && npm run build -w backend",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "ms-azuretools.vscode-azureappservice",
+        "ms-azuretools.vscode-docker",
+        "ms-vscode.azure-account"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  }
+}

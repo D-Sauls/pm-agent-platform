@@ -1,0 +1,58 @@
+version: "3.8"
+
+services:
+  app:
+    image: mcr.microsoft.com/devcontainers/typescript-node:1-24-bookworm
+    command: sleep infinity
+    volumes:
+      - ..:/workspaces/pwa-onboarding:cached
+    working_dir: /workspaces/pwa-onboarding
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_ENV: cloud-dev
+      NODE_ENV: development
+      ADMIN_AUTH_MODE: local
+      PORT: "4000"
+      DATABASE_URL: postgresql://onboarding:onboarding_dev_password@postgres:5432/onboarding_dev
+      PERSISTENCE_DRIVER: postgres
+      DATABASE_SSL: "false"
+      PLATFORM_DATA_DIR: data
+      DEFAULT_TENANT_ID: tenant-acme
+      DEFAULT_TENANT_NAME: Acme Corp
+      DEFAULT_TENANT_REGION: us
+      SECONDARY_TENANT_ID: tenant-beta
+      SECONDARY_TENANT_NAME: Beta Industries
+      SECONDARY_TENANT_REGION: eu
+      VITE_DEFAULT_TENANT_ID: tenant-acme
+      VITE_SECONDARY_TENANT_ID: tenant-beta
+      ACTIVATION_BASE_URL: http://localhost:5173
+      ACTIVATION_DELIVERY_MODE: log
+      ACTIVATION_EMAIL_PROVIDER: sendgrid
+      ACTIVATION_DELIVERY_PREVIEW: "true"
+      ACTIVATION_SENDER_EMAIL: no-reply@localhost
+      SENDGRID_SENDER_VERIFIED: "false"
+      ALLOW_VOLATILE_RUNTIME_STATE: "true"
+      LOG_LEVEL: debug
+      TELEMETRY_VERBOSE: "true"
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: onboarding_dev
+      POSTGRES_USER: onboarding
+      POSTGRES_PASSWORD: onboarding_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U onboarding -d onboarding_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:
