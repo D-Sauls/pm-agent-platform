@@ -55,6 +55,8 @@ Notes:
 
 ### Deployment-Critical Env Vars
 - `DATABASE_URL`
+- `PERSISTENCE_DRIVER`
+- `DATABASE_SSL`
 - `KEYVAULT_URI`
 - `TEAMS_APP_ID`
 - `TEAMS_BOT_APP_ID`
@@ -62,6 +64,14 @@ Notes:
 - `BOT_ENDPOINT`
 - `LICENSE_SECRET`
 - `LOG_LEVEL`
+
+### Persistence Modes
+- Local/dev: `PERSISTENCE_DRIVER=sqlite` with `DATABASE_URL=file:./data/onboarding-local.db`.
+- Managed production target: `PERSISTENCE_DRIVER=postgres` with a PostgreSQL `DATABASE_URL`.
+- Set `DATABASE_SSL=true` for managed cloud PostgreSQL unless the provider requires a different TLS policy.
+- `GET /health/ready` reports degraded in production if `DATABASE_URL` is missing, SQLite is selected, or the managed adapter cannot initialize.
+- `TEST_MANAGED_DATABASE_URL` enables the optional live PostgreSQL integration test for migration, tenant isolation, and append-only event behavior.
+- Core managed schema uses tenant-scoped JSONB document tables plus append-only event tables for audit/evidence-style records.
 
 ## Operational Readiness Notes
 - Structured logging:

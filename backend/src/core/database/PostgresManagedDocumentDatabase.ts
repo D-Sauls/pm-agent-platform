@@ -11,7 +11,7 @@ function reviveDates(_key: string, value: unknown): unknown {
   return Number.isNaN(parsed.getTime()) ? value : parsed;
 }
 
-const migration = `
+export const postgresCoreMigrationSql = `
 CREATE TABLE IF NOT EXISTS schema_migrations (
   id TEXT PRIMARY KEY,
   applied_at TIMESTAMPTZ NOT NULL
@@ -55,10 +55,7 @@ export class PostgresManagedDocumentDatabase {
   }
 
   static fromConnectionString(connectionString: string, ssl = false): PostgresManagedDocumentDatabase {
-    return new PostgresManagedDocumentDatabase({
-      connectionString,
-      ssl: ssl ? { rejectUnauthorized: true } : undefined
-    });
+    return new PostgresManagedDocumentDatabase(buildPostgresPoolConfig(connectionString, ssl));
   }
 
   async migrate(): Promise<void> {
@@ -76,7 +73,7 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
         ["001_core_persistence"]
       );
       if (existing.rowCount === 0) {
-        await client.query(migration);
+        await client.query(postgresCoreMigrationSql);
         await client.query(
           "INSERT INTO schema_migrations (id, applied_at) VALUES ($1, $2)",
           ["001_core_persistence", new Date()]
@@ -180,4 +177,11 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
   private parse<T>(payload: unknown): T {
     return JSON.parse(JSON.stringify(payload), reviveDates) as T;
   }
+}
+
+export function buildPostgresPoolConfig(connectionString: string, ssl = false): PoolConfig {
+  return {
+    connectionString,
+    ssl: ssl ? { rejectUnauthorized: true } : undefined
+  };
 }

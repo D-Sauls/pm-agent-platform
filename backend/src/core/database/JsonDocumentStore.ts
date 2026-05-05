@@ -1,5 +1,14 @@
 import { SqliteAppDatabase } from "./SqliteAppDatabase.js";
 
+export interface DocumentStore {
+  upsert<T>(scope: string, tenantId: string, id: string, value: T): T;
+  get<T>(scope: string, tenantId: string, id: string): T | null;
+  list<T>(scope: string, tenantId: string): T[];
+  replaceScope<T extends { id: string }>(scope: string, tenantId: string, values: T[]): void;
+  append<T extends { id: string }>(scope: string, tenantId: string, id: string, value: T): T;
+  listEvents<T>(scope: string, tenantId: string): T[];
+}
+
 type StoredRow = {
   id: string;
   payload: string;
@@ -18,7 +27,7 @@ function reviveDates(_key: string, value: unknown): unknown {
   return Number.isNaN(parsed.getTime()) ? value : parsed;
 }
 
-export class JsonDocumentStore {
+export class JsonDocumentStore implements DocumentStore {
   constructor(private readonly database: SqliteAppDatabase) {}
 
   upsert<T>(

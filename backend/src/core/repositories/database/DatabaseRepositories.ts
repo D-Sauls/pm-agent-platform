@@ -43,13 +43,13 @@ import type {
   TenantRepository,
   UsageLogRepository
 } from "../interfaces.js";
-import { JsonDocumentStore } from "../../database/JsonDocumentStore.js";
+import { JsonDocumentStore, type DocumentStore } from "../../database/JsonDocumentStore.js";
 import { SqliteAppDatabase } from "../../database/SqliteAppDatabase.js";
 
 const globalTenant = "__global__";
 
 export class DatabaseTenantRepository implements TenantRepository {
-  constructor(private readonly store: JsonDocumentStore) {}
+  constructor(private readonly store: DocumentStore) {}
 
   async create(tenant: Tenant): Promise<Tenant> {
     const stored = this.store.upsert("tenant", tenant.tenantId, tenant.tenantId, tenant);
@@ -80,7 +80,7 @@ export class DatabaseTenantRepository implements TenantRepository {
 }
 
 export class DatabaseLicenseRepository implements LicenseRepository {
-  constructor(private readonly store: JsonDocumentStore) {}
+  constructor(private readonly store: DocumentStore) {}
 
   async upsert(license: License): Promise<License> {
     const stored = this.store.upsert("license", license.tenantId, license.tenantId, license);
@@ -106,7 +106,7 @@ export class DatabaseLicenseRepository implements LicenseRepository {
 }
 
 export class DatabasePromptMappingRepository implements PromptMappingRepository {
-  constructor(private readonly store: JsonDocumentStore) {}
+  constructor(private readonly store: DocumentStore) {}
 
   async setDefaultPromptVersion(tenantId: string, version: string | null): Promise<void> {
     this.store.upsert("prompt-mapping", tenantId, tenantId, { id: tenantId, tenantId, version });
@@ -118,7 +118,7 @@ export class DatabasePromptMappingRepository implements PromptMappingRepository 
 }
 
 export class DatabaseConnectorConfigRepository implements ConnectorConfigRepository {
-  constructor(private readonly store: JsonDocumentStore) {}
+  constructor(private readonly store: DocumentStore) {}
 
   async upsert(config: ConnectorConfig): Promise<ConnectorConfig> {
     return this.store.upsert("connector-config", config.tenantId, config.connectorName, {
@@ -137,7 +137,7 @@ export class DatabaseConnectorConfigRepository implements ConnectorConfigReposit
 }
 
 export class DatabaseUsageLogRepository implements UsageLogRepository {
-  constructor(private readonly store: JsonDocumentStore) {}
+  constructor(private readonly store: DocumentStore) {}
 
   async append(log: UsageLog): Promise<void> {
     this.store.append("usage-log", log.tenantId, log.id, log);
@@ -163,7 +163,7 @@ export class DatabaseUsageLogRepository implements UsageLogRepository {
 }
 
 export class DatabaseAdminAuditLogRepository implements AdminAuditLogRepository {
-  constructor(private readonly store: JsonDocumentStore) {}
+  constructor(private readonly store: DocumentStore) {}
 
   async append(log: AdminAuditLog): Promise<void> {
     this.store.append("admin-audit-log", log.tenantId ?? globalTenant, log.id, log);
@@ -185,7 +185,7 @@ export class DatabaseAdminAuditLogRepository implements AdminAuditLogRepository 
 }
 
 export class DatabaseRoleProfileRepository implements RoleProfileRepository {
-  constructor(private readonly store: JsonDocumentStore) {}
+  constructor(private readonly store: DocumentStore) {}
 
   async create(roleProfile: RoleProfile): Promise<RoleProfile> {
     return this.store.upsert("role-profile", roleProfile.tenantId, roleProfile.id, roleProfile);
@@ -201,7 +201,7 @@ export class DatabaseRoleProfileRepository implements RoleProfileRepository {
 }
 
 export class DatabaseOnboardingPathRepository implements OnboardingPathRepository {
-  constructor(private readonly store: JsonDocumentStore) {}
+  constructor(private readonly store: DocumentStore) {}
 
   async create(path: OnboardingPath): Promise<OnboardingPath> {
     return this.store.upsert("onboarding-path", path.tenantId, path.id, path);
@@ -217,7 +217,7 @@ export class DatabaseOnboardingPathRepository implements OnboardingPathRepositor
 }
 
 export class DatabaseCourseCatalogRepository {
-  constructor(private readonly store: JsonDocumentStore) {}
+  constructor(private readonly store: DocumentStore) {}
 
   upsert(course: Course): Course {
     return this.store.upsert("course", course.tenantId, course.id, course);
@@ -233,7 +233,7 @@ export class DatabaseCourseCatalogRepository {
 }
 
 export class DatabasePolicyCatalogRepository {
-  constructor(private readonly store: JsonDocumentStore) {}
+  constructor(private readonly store: DocumentStore) {}
 
   upsert(policy: Policy): Policy {
     return this.store.upsert("policy", policy.tenantId, policy.id, policy);
@@ -249,7 +249,7 @@ export class DatabasePolicyCatalogRepository {
 }
 
 export class DatabaseLearningProgressRepository {
-  constructor(private readonly store: JsonDocumentStore) {}
+  constructor(private readonly store: DocumentStore) {}
 
   upsert(progress: LearningProgress): LearningProgress {
     return this.store.upsert(
@@ -268,7 +268,7 @@ export class DatabaseLearningProgressRepository {
 }
 
 export class DatabasePolicyVersionRepository implements PolicyVersionRepository {
-  constructor(private readonly store: JsonDocumentStore) {}
+  constructor(private readonly store: DocumentStore) {}
 
   async append(version: PolicyVersion): Promise<void> {
     this.appendSync(version);
@@ -303,7 +303,7 @@ export class DatabasePolicyVersionRepository implements PolicyVersionRepository 
 }
 
 export class DatabaseCourseVersionRepository implements CourseVersionRepository {
-  constructor(private readonly store: JsonDocumentStore) {}
+  constructor(private readonly store: DocumentStore) {}
 
   async append(version: CourseVersion): Promise<void> {
     this.appendSync(version);
@@ -338,7 +338,7 @@ export class DatabaseCourseVersionRepository implements CourseVersionRepository 
 }
 
 export class DatabaseAcknowledgementRepository implements AcknowledgementRepository {
-  constructor(private readonly store: JsonDocumentStore) {}
+  constructor(private readonly store: DocumentStore) {}
 
   async append(record: AcknowledgementRecord): Promise<void> {
     this.appendSync(record);
@@ -374,7 +374,7 @@ export class DatabaseAcknowledgementRepository implements AcknowledgementReposit
 }
 
 export class DatabaseComplianceRequirementRepository implements ComplianceRequirementRepository {
-  constructor(private readonly store: JsonDocumentStore) {}
+  constructor(private readonly store: DocumentStore) {}
 
   async append(requirement: ComplianceRequirement): Promise<void> {
     this.appendSync(requirement);
@@ -394,7 +394,7 @@ export class DatabaseComplianceRequirementRepository implements ComplianceRequir
 }
 
 export class DatabaseComplianceConfigRepository implements ComplianceConfigRepository {
-  constructor(private readonly store: JsonDocumentStore) {}
+  constructor(private readonly store: DocumentStore) {}
 
   async upsert(tenantId: string, config: ComplianceConfig): Promise<ComplianceConfig> {
     return this.upsertSync(tenantId, config);
@@ -414,7 +414,7 @@ export class DatabaseComplianceConfigRepository implements ComplianceConfigRepos
 }
 
 export class DatabaseHROverrideRepository implements HROverrideRepository {
-  constructor(private readonly store: JsonDocumentStore) {}
+  constructor(private readonly store: DocumentStore) {}
 
   async append(record: HROverrideRecord): Promise<void> {
     this.appendSync(record);
@@ -434,7 +434,7 @@ export class DatabaseHROverrideRepository implements HROverrideRepository {
 }
 
 export class DatabaseHrImportRepository implements HrImportRepository {
-  constructor(private readonly store: JsonDocumentStore) {}
+  constructor(private readonly store: DocumentStore) {}
 
   createJob(job: UserImportJob): UserImportJob {
     const stored = this.store.upsert("hr-import-job", job.tenantId, job.id, job);
@@ -634,7 +634,10 @@ export class DatabaseHrImportRepository implements HrImportRepository {
 }
 
 export function createDatabaseRepositories(database: SqliteAppDatabase) {
-  const store = new JsonDocumentStore(database);
+  return createDatabaseRepositoriesFromStore(new JsonDocumentStore(database));
+}
+
+export function createDatabaseRepositoriesFromStore(store: DocumentStore) {
   const tenantRepository = new DatabaseTenantRepository(store);
   return {
     tenantRepository,

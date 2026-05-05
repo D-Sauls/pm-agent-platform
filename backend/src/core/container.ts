@@ -21,8 +21,8 @@ import {
   MemoryTimeEntryRepository,
   MemoryUsageLogRepository
 } from "./repositories/memory/MemoryRepositories.js";
-import { SqliteAppDatabase } from "./database/SqliteAppDatabase.js";
-import { createDatabaseRepositories } from "./repositories/database/DatabaseRepositories.js";
+import { createAppPersistenceRuntime } from "./database/AppPersistenceRuntime.js";
+import { createDatabaseRepositoriesFromStore } from "./repositories/database/DatabaseRepositories.js";
 import { ConnectorRouter } from "./services/ConnectorRouter.js";
 import { ForecastService } from "./services/ForecastService.js";
 import { LicenseService } from "./services/LicenseService.js";
@@ -105,8 +105,9 @@ const defaultTenantId = env.defaultTenantId;
 const secondaryTenantId = env.secondaryTenantId;
 const defaultTenantName = env.defaultTenantName;
 const secondaryTenantName = env.secondaryTenantName;
-export const { database: appDatabase, info: persistenceRuntimeInfo } = SqliteAppDatabase.fromEnv();
-const databaseRepositories = createDatabaseRepositories(appDatabase);
+const appPersistenceRuntime = createAppPersistenceRuntime();
+export const persistenceRuntimeInfo = appPersistenceRuntime.info;
+const databaseRepositories = createDatabaseRepositoriesFromStore(appPersistenceRuntime.store);
 const tenantRepository = databaseRepositories.tenantRepository;
 const licenseRepository = databaseRepositories.licenseRepository;
 const usageLogRepository = databaseRepositories.usageLogRepository;

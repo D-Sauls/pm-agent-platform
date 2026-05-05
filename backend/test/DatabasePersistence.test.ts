@@ -206,3 +206,32 @@ test("database repositories keep evidence and audit records append-only", async 
   db.close();
   fs.rmSync(filePath, { force: true });
 });
+
+import { PostgresDocumentStore } from "../src/core/database/PostgresDocumentStore.js";
+
+test(
+  "managed PostgreSQL document store runs migration and preserves tenant isolation",
+  { skip: !process.env.TEST_MANAGED_DATABASE_URL },
+  () => {
+    const connectionString = process.env.TEST_MANAGED_DATABASE_URL as string;
+    const store = new PostgresDocumentStore(connectionString, process.env.TEST_MANAGED_DATABASE_SSL === "true");
+    const scope = `managed-test-${process.pid}-${Date.now()}`;
+
+    store.upsert(scope, "tenant-a", "shared-id", { id: "shared-id", tenantId: "tenant-a", value: "a" });
+    store.upsert(scope, "tenant-b", "shared-id", { id: "shared-id", tenantId: "tenant-b", value: "b" });
+    store.append(`${scope}-events`, "tenant-a", "event-1", { id: "event-1", tenantId: "tenant-a", value: "first" });
+
+    assert.equal(store.get<{ value: string }>(scope, "tenant-a", "shared-id")?.value, "a");
+    assert.equal(store.get<{ value: string }>(scope, "tenant-b", "shared-id")?.value, "b");
+    assert.equal(store.list<{ value: string }>(scope, "tenant-a").length, 1);
+    assert.equal(store.listEvents<{ value: string }>(`${scope}-events`, "tenant-b").length, 0);
+    assert.throws(() =>
+      store.append(`${scope}-events`, "tenant-a", "event-1", {
+        id: "event-1",
+        tenantId: "tenant-a",
+        value: "tamper"
+      })
+    );
+    assert.equal(store.listEvents<{ value: string }>(`${scope}-events`, "tenant-a")[0]?.value, "first");
+  }
+);
